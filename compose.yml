@@ -1,10 +1,10 @@
 services:
   db:
-    image: postgis/postgis:15-3.3
+    image: postgis/postgis:17-3.5
     container_name: verdantis-postgis
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: verdantis
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: verdantis
     ports:
       - "5432:5432"

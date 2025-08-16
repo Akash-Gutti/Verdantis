@@ -1,0 +1,134 @@
+erDiagram
+    organization ||--o{ asset : owns
+    organization ||--o{ permit : issues
+
+    asset ||--o{ permit : has
+    asset ||--o{ satellite_tile : observed_by
+    asset ||--o{ iot_stream : monitored_by
+    asset ||--o{ event : triggers
+    asset ||--o{ proof_bundle : proven_by
+
+    document ||--o{ policy_clause : contains
+    document ||--o{ permit : references
+    document ||--o{ event : referenced_by
+    document ||--o{ proof_bundle : bundled_with
+
+    rule ||--o{ proof_bundle : attests
+
+    organization {
+      uuid id PK
+      text name
+      text org_type
+      char2 country_code
+      timestamptz created_at
+    }
+
+    asset {
+      uuid id PK
+      text name
+      text kind
+      text status
+      uuid owner_org_id FK
+      geometry centroid
+      geometry footprint
+      text address
+      text city
+      text region
+      char2 country_code
+      timestamptz created_at
+      timestamptz updated_at
+    }
+
+    permit {
+      uuid id PK
+      uuid asset_id FK
+      uuid org_id FK
+      text permit_type
+      text status
+      date issue_date
+      date expiry_date
+      uuid document_id FK
+      text reference_id
+      geometry geom
+    }
+
+    document {
+      uuid id PK
+      text title
+      text source
+      varchar5 lang
+      text url
+      text storage_path
+      text doc_sha256
+      date doc_date
+      timestamptz ingested_at
+    }
+
+    policy_clause {
+      uuid id PK
+      uuid document_id FK
+      text clause_ref
+      text jurisdiction
+      text theme
+      text clause_text
+      text clause_hash
+    }
+
+    satellite_tile {
+      uuid id PK
+      uuid asset_id FK
+      text aoi_name
+      date capture_date
+      text sensor
+      text path
+      real cloud_cover
+      geometry footprint
+      jsonb band_summary
+    }
+
+    iot_stream {
+      uuid id PK
+      uuid asset_id FK
+      text stream_name
+      text unit
+      timestamptz started_at
+      timestamptz ended_at
+      geometry location
+      jsonb meta
+    }
+
+    event {
+      uuid id PK
+      text event_key
+      text event_type
+      uuid asset_id FK
+      uuid related_document_id FK
+      timestamptz occurred_at
+      jsonb payload
+      timestamptz created_at
+    }
+
+    rule {
+      uuid id PK
+      text rule_code
+      text name
+      text description
+      smallint severity
+      text version
+      jsonb definition
+      jsonb target_selector
+      timestamptz created_at
+    }
+
+    proof_bundle {
+      uuid id PK
+      uuid asset_id FK
+      uuid rule_id FK
+      uuid event_id FK
+      uuid document_id FK
+      text status
+      text proof_hash
+      text evidence_url
+      jsonb meta
+      timestamptz created_at
+    }
