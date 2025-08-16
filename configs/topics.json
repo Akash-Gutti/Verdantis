@@ -1,0 +1,8 @@
+{
+  "verdantis.DocumentIngested": "doc.ingested",
+  "verdantis.TileFetched": "sat.tile.fetched",
+  "verdantis.PolicyUpdated": "policy.updated",
+  "verdantis.ViolationFlagged": "violation.flagged",
+  "verdantis.ProofIssued": "proof.issued",
+  "verdantis.AlertRaised": "alert.raised"
+}

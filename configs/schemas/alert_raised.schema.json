@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://verdantis/schemas/alert_raised.schema.json",
+  "title": "AlertRaised",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_type",
+    "occurred_at",
+    "source",
+    "version",
+    "schema_ref",
+    "content_hash",
+    "idempotency_key",
+    "payload"
+  ],
+  "properties": {
+    "event_id": { "type": "string", "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$" },
+    "event_type": { "type": "string", "enum": ["verdantis.AlertRaised"] },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "source": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "schema_ref": { "type": "string" },
+    "trace_id": { "type": "string" },
+    "content_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "idempotency_key": { "type": "string", "minLength": 8 },
+    "payload": { "$ref": "#/definitions/Payload" }
+  },
+  "definitions": {
+    "Payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alert_id", "title", "message", "severity", "created_at"],
+      "properties": {
+        "alert_id": { "type": "string", "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$" },
+        "related_violation_id": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "severity": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+        "channel": { "type": "string", "enum": ["email", "webhook", "slack", "console"] },
+        "recipients": { "type": "array", "items": { "type": "string" } },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

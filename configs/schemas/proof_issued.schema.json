@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://verdantis/schemas/proof_issued.schema.json",
+  "title": "ProofIssued",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_type",
+    "occurred_at",
+    "source",
+    "version",
+    "schema_ref",
+    "content_hash",
+    "idempotency_key",
+    "payload"
+  ],
+  "properties": {
+    "event_id": { "type": "string", "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$" },
+    "event_type": { "type": "string", "enum": ["verdantis.ProofIssued"] },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "source": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "schema_ref": { "type": "string" },
+    "trace_id": { "type": "string" },
+    "content_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "idempotency_key": { "type": "string", "minLength": 8 },
+    "payload": { "$ref": "#/definitions/Payload" }
+  },
+  "definitions": {
+    "Payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proof_id",
+        "subject_id",
+        "policy_id",
+        "proof_type",
+        "proof_uri",
+        "issued_at",
+        "issuer",
+        "hash"
+      ],
+      "properties": {
+        "proof_id": { "type": "string", "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$" },
+        "subject_id": { "type": "string" },
+        "policy_id": { "type": "string" },
+        "proof_type": { "type": "string", "enum": ["zk_commitment", "signature", "attestation"] },
+        "proof_uri": { "type": "string" },
+        "issued_at": { "type": "string", "format": "date-time" },
+        "issuer": { "type": "string" },
+        "valid_until": { "type": "string", "format": "date-time" },
+        "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    }
+  }
+}

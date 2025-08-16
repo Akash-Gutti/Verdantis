@@ -13,6 +13,7 @@ venv/
 data/interim/
 data/raw/
 data/archived_scripts/
+data/event_samples/
 data/processed/
 models/*
 !models/.gitkeep

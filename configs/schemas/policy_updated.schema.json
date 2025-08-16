@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://verdantis/schemas/policy_updated.schema.json",
+  "title": "PolicyUpdated",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_type",
+    "occurred_at",
+    "source",
+    "version",
+    "schema_ref",
+    "content_hash",
+    "idempotency_key",
+    "payload"
+  ],
+  "properties": {
+    "event_id": { "type": "string", "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$" },
+    "event_type": { "type": "string", "enum": ["verdantis.PolicyUpdated"] },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "source": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "schema_ref": { "type": "string" },
+    "trace_id": { "type": "string" },
+    "content_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "idempotency_key": { "type": "string", "minLength": 8 },
+    "payload": { "$ref": "#/definitions/Payload" }
+  },
+  "definitions": {
+    "Payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy_id", "name", "version", "effective_at", "actor"],
+      "properties": {
+        "policy_id": { "type": "string", "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$" },
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "effective_at": { "type": "string", "format": "date-time" },
+        "actor": { "type": "string" },
+        "changed_fields": { "type": "array", "items": { "type": "string" } },
+        "diff_uri": { "type": "string" }
+      }
+    }
+  }
+}

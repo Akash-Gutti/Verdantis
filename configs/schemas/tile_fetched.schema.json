@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://verdantis/schemas/tile_fetched.schema.json",
+  "title": "TileFetched",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_type",
+    "occurred_at",
+    "source",
+    "version",
+    "schema_ref",
+    "content_hash",
+    "idempotency_key",
+    "payload"
+  ],
+  "properties": {
+    "event_id": { "type": "string", "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$" },
+    "event_type": { "type": "string", "enum": ["verdantis.TileFetched"] },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "source": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "schema_ref": { "type": "string" },
+    "trace_id": { "type": "string" },
+    "content_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "idempotency_key": { "type": "string", "minLength": 8 },
+    "payload": { "$ref": "#/definitions/Payload" }
+  },
+  "definitions": {
+    "Payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tile_id",
+        "aoi_id",
+        "satellite",
+        "sensed_at",
+        "bands",
+        "url",
+        "checksum_sha256"
+      ],
+      "properties": {
+        "tile_id": { "type": "string", "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$" },
+        "aoi_id": { "type": "string" },
+        "satellite": { "type": "string" },
+        "sensed_at": { "type": "string", "format": "date-time" },
+        "bands": { "type": "array", "items": { "type": "string" } },
+        "url": { "type": "string" },
+        "checksum_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "cloud_cover": { "type": "number", "minimum": 0, "maximum": 1 },
+        "bbox_wgs84": { "type": "array", "items": { "type": "number" }, "minItems": 4 }
+      }
+    }
+  }
+}
