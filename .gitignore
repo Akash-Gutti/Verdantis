@@ -11,6 +11,7 @@ venv/
 
 # Data & models
 data/interim/
+data/raw/
 data/processed/
 models/*
 !models/.gitkeep

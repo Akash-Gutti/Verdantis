@@ -4,7 +4,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # Accept unknown env keys; read from .env (case-insensitive)
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -13,7 +12,7 @@ class Settings(BaseSettings):
     )
 
     # Core flags
-    offline: bool = True  # preferred field
+    offline: bool = True
     mode: str = "cpu-first"
     bus_backend: str = "file"
     redis_url: str = "redis://localhost:6379/0"
@@ -28,19 +27,32 @@ class Settings(BaseSettings):
     policy_port: int = 8006
     alerts_port: int = 8007
 
-    # Optional extras (avoid crashes if present in .env)
+    # Models & device
     hf_home: str | None = None
+    embedding_model: str = "intfloat/e5-base"
+    mnli_model: str = "roberta-base-mnli"
+    force_device: str | None = None
 
 
 settings = Settings()
 
-# Back-compat / mapping from existing .env keys
-# OFFLINE_MODE -> offline
+# Back-compat / env mappings
 _offline_mode = os.getenv("OFFLINE_MODE")
 if _offline_mode is not None:
     settings.offline = _offline_mode.strip().lower() in ("1", "true", "yes", "on")
 
-# HF_HOME -> hf_home
 _hf = os.getenv("HF_HOME")
 if _hf:
     settings.hf_home = _hf
+
+_em = os.getenv("EMBEDDING_MODEL")
+if _em:
+    settings.embedding_model = _em
+
+_mnli = os.getenv("MNLI_MODEL")
+if _mnli:
+    settings.mnli_model = _mnli
+
+_fd = os.getenv("FORCE_DEVICE")
+if _fd:
+    settings.force_device = _fd
