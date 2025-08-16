@@ -12,7 +12,8 @@ def main():
     # Local imports after sys.path adjustment
     from modules import m0, m1
     from modules.m2 import agents as m2a
-    from modules.m2 import flow as m2f  # NEW
+    from modules.m2 import flow as m2f
+    from modules.m2 import replay as m2r
     from modules.m2 import schemas as m2s
 
     p = argparse.ArgumentParser(description="Verdantis control CLI (modules m0..m11)")
@@ -56,6 +57,40 @@ def main():
         "--interval", type=float, default=1.0, help="Polling interval seconds (default: 1.0)"
     )
     sub.add_parser("m2.flow.verify", help="Verify publish→consume loop and dedupe")
+
+    # --- module 2 actions (M2.4) ---
+    p_rt = sub.add_parser("m2.replay.topics", help="Replay mirrored events by topic/time window")
+    p_rt.add_argument(
+        "--topic", type=str, default="all", help="Topic name (e.g., doc.ingested) or 'all'"
+    )
+    p_rt.add_argument(
+        "--from", dest="since", type=str, default=None, help="Start ISO datetime (inclusive)"
+    )
+    p_rt.add_argument(
+        "--to", dest="until", type=str, default=None, help="End ISO datetime (exclusive)"
+    )
+    p_rt.add_argument("--limit", type=int, default=None, help="Max events to replay")
+    p_rt.add_argument("--sleep", type=float, default=0.0, help="Delay between emits (seconds)")
+    p_rt.add_argument("--dry-run", action="store_true", help="Print what would be enqueued")
+
+    p_rd = sub.add_parser("m2.replay.db", help="Replay events from DB by time window")
+    p_rd.add_argument(
+        "--event-type",
+        action="append",
+        dest="etypes",
+        help="Repeatable. e.g., --event-type verdantis.DocumentIngested",
+    )
+    p_rd.add_argument(
+        "--from", dest="since", type=str, default=None, help="Start ISO datetime (inclusive)"
+    )
+    p_rd.add_argument(
+        "--to", dest="until", type=str, default=None, help="End ISO datetime (exclusive)"
+    )
+    p_rd.add_argument("--limit", type=int, default=None, help="Max events to replay")
+    p_rd.add_argument("--sleep", type=float, default=0.0, help="Delay between emits (seconds)")
+    p_rd.add_argument("--dry-run", action="store_true", help="Print what would be enqueued")
+
+    sub.add_parser("m2.replay.verify", help="Verify replay preserves idempotency and lands in dup/")
 
     # verify (global)
     v = sub.add_parser("verify", help="Run verifiers")
@@ -129,6 +164,28 @@ def main():
         disp = m2f.FileBusDispatcher(agent_name="bus-consumer")
         disp.verify()
 
+    # ---- M2.4 commands ----
+    elif args.cmd == "m2.replay.topics":
+        m2r.replay_from_topics(
+            topic=args.topic,
+            start_iso=args.since,
+            end_iso=args.until,
+            limit=args.limit,
+            sleep=args.sleep,
+            dry_run=args.dry_run,
+        )
+    elif args.cmd == "m2.replay.db":
+        m2r.replay_from_db(
+            event_types=args.etypes,
+            start_iso=args.since,
+            end_iso=args.until,
+            limit=args.limit,
+            sleep=args.sleep,
+            dry_run=args.dry_run,
+        )
+    elif args.cmd == "m2.replay.verify":
+        m2r.verify()
+
     elif args.cmd == "verify":
         if args.module == "all":
             print("=== verify m0 ===")
@@ -141,6 +198,8 @@ def main():
             m2a.verify()
             print("=== verify m2 (flow) ===")
             m2f.FileBusDispatcher().verify()
+            print("=== verify m2 (replay) ===")
+            m2r.verify()
             print("ALL VERIFICATIONS PASSED")
         elif args.module == "m0":
             m0.verify()
@@ -150,6 +209,7 @@ def main():
             m2s.verify()
             m2a.verify()
             m2f.FileBusDispatcher().verify()
+            m2r.verify()
         else:
             raise SystemExit("Unknown module. Use m0, m1, m2, or all.")
     else:
