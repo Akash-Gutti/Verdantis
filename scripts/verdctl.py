@@ -8,8 +8,9 @@ def main():
     # Make 'modules' importable when running this script directly
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-    # Local imports after sys.path adjustment (flake8-friendly)
+    # Local imports after sys.path adjustment
     from modules import m0, m1
+    from modules.m2 import agents as m2a  # NEW
     from modules.m2 import schemas as m2s
 
     p = argparse.ArgumentParser(description="Verdantis control CLI (modules m0..m11)")
@@ -30,6 +31,16 @@ def main():
     grp.add_argument("--dir", type=str, help="Directory of *.json events")
     sub.add_parser("m2.ls", help="List available schema contracts")
     sub.add_parser("m2.samples", help="Generate sample events into data/event_samples")
+
+    # --- module 2 actions (M2.2) ---
+    p_m2a = sub.add_parser(
+        "m2.agent.process", help="Process event file(s) into DB with idempotency"
+    )
+    grp2 = p_m2a.add_mutually_exclusive_group(required=True)
+    grp2.add_argument("--file", type=str, help="Path to a single event JSON")
+    grp2.add_argument("--dir", type=str, help="Directory of *.json events")
+
+    sub.add_parser("m2.agent.verify", help="Verify agent dedupe gate (process same event twice)")
 
     # verify
     v = sub.add_parser("verify", help="Run verifiers")
@@ -72,21 +83,34 @@ def main():
     elif args.cmd == "m2.samples":
         m2s.make_samples()
 
+    # ---- M2.2 commands ----
+    elif args.cmd == "m2.agent.process":
+        if getattr(args, "file", None):
+            m2a.agent_process_file(args.file)
+        else:
+            m2a.agent_process_dir(args.dir)
+    elif args.cmd == "m2.agent.verify":
+        m2a.verify()
+
     elif args.cmd == "verify":
         if args.module == "all":
             print("=== verify m0 ===")
             m0.verify()
             print("=== verify m1 ===")
             m1.verify()
-            print("=== verify m2 ===")
+            print("=== verify m2 (schemas) ===")
             m2s.verify()
+            print("=== verify m2 (agent) ===")
+            m2a.verify()
             print("ALL VERIFICATIONS PASSED")
         elif args.module == "m0":
             m0.verify()
         elif args.module == "m1":
             m1.verify()
         elif args.module == "m2":
+            # include both M2.1 and M2.2 verifiers
             m2s.verify()
+            m2a.verify()
         else:
             raise SystemExit("Unknown module. Use m0, m1, m2, or all.")
     else:
