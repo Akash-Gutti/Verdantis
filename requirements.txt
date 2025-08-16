@@ -31,6 +31,9 @@ sentencepiece>=0.1.99
 protobuf>=3.20.3
 tokenizers>=0.19.1
 psycopg[binary]
+networkx
+lxml
+jsonschema
 
 # tooling
 black>=24.4
