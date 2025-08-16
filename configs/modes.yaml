@@ -1,0 +1,9 @@
+default:
+  offline: true
+  mode: cpu-first
+  bus_backend: file
+
+gpu_plus:
+  offline: false
+  mode: gpu-plus
+  bus_backend: redis

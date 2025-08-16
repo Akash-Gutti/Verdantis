@@ -1,0 +1,4 @@
+rag:
+  min_coverage: 0.60
+alerts:
+  dedupe_minutes: 30

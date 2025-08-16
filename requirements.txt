@@ -1,0 +1,32 @@
+fastapi>=0.110
+uvicorn>=0.23
+pydantic>=2.6
+pydantic-settings>=2.2
+python-dotenv>=1.0
+httpx>=0.27
+redis>=5.0
+loguru>=0.7
+orjson>=3.9
+pyyaml>=6.0
+
+# tooling
+black>=24.4
+flake8>=7.0
+isort>=5.13
+pre-commit>=3.7
+
+
+numpy>=1.26
+pandas>=2.2
+scikit-learn>=1.5
+prefect>=2.14
+transformers>=4.43
+sentence-transformers>=2.7
+torch --extra-index-url https://download.pytorch.org/whl/cpu
+spacy>=3.7
+pyarrow
+tqdm
+langdetect
+pymupdf
+pytesseract
+pillow
