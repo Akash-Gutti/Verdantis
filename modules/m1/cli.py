@@ -27,4 +27,5 @@ def register(sub: argparse._SubParsersAction, verifiers: dict) -> None:
     sp = sub.add_parser("m1.export", help="Run M1.4 KG export (CSV+GraphML)")
     sp.set_defaults(func=lambda _: export())
 
+    # Register M1’s verifier into the shared dict
     verifiers["m1"] = verify_all
