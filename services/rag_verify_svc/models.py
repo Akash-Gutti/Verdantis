@@ -20,6 +20,11 @@ class ModelManager:
     def __post_init__(self):
         self.device = self._select_device()
 
+    def embed(self, texts: list[str]):
+        """Encode texts with the configured embedding model."""
+        emb = self.load_embedder()
+        return emb.encode(texts, convert_to_numpy=True, normalize_embeddings=True)
+
     def _select_device(self) -> torch.device:
         if settings.force_device:
             try:
@@ -38,7 +43,7 @@ class ModelManager:
 
     def load_nli(self):
         if self.nli_model is None or self.nli_tokenizer is None:
-            tok = AutoTokenizer.from_pretrained(settings.mnli_model)
+            tok = AutoTokenizer.from_pretrained(settings.mnli_model, use_fast=False)
             mdl = AutoModelForSequenceClassification.from_pretrained(settings.mnli_model)
             mdl.to(self.device)
             mdl.eval()
