@@ -1,0 +1,6 @@
+- id: R001
+  name: Emissions target missing
+  trigger: on_ingest
+  condition: "doc.lang == 'en' and 'emission' not in doc.text.lower()"
+  action: flag_violation
+  severity: medium

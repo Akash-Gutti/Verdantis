@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: verdantis-postgis
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: verdantis
+      POSTGRES_DB: verdantis
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d verdantis"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: verdantis-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest   # <-- valid image/tag on Docker Hub
+    container_name: verdantis-minio
+    environment:
+      MINIO_ROOT_USER: verdantis
+      MINIO_ROOT_PASSWORD: verdantis123
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - minio:/data
+
+volumes:
+  pgdata:
+  minio:
