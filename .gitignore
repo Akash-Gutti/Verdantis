@@ -10,6 +10,7 @@ venv/
 .env.*
 
 # Data & models
+data/bus/
 data/interim/
 data/raw/
 data/archived_scripts/

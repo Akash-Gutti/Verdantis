@@ -2,6 +2,7 @@
 import argparse
 import os
 import sys
+from pathlib import Path
 
 
 def main():
@@ -10,7 +11,8 @@ def main():
 
     # Local imports after sys.path adjustment
     from modules import m0, m1
-    from modules.m2 import agents as m2a  # NEW
+    from modules.m2 import agents as m2a
+    from modules.m2 import flow as m2f  # NEW
     from modules.m2 import schemas as m2s
 
     p = argparse.ArgumentParser(description="Verdantis control CLI (modules m0..m11)")
@@ -39,10 +41,23 @@ def main():
     grp2 = p_m2a.add_mutually_exclusive_group(required=True)
     grp2.add_argument("--file", type=str, help="Path to a single event JSON")
     grp2.add_argument("--dir", type=str, help="Directory of *.json events")
-
     sub.add_parser("m2.agent.verify", help="Verify agent dedupe gate (process same event twice)")
 
-    # verify
+    # --- module 2 actions (M2.3) ---
+    sub.add_parser(
+        "m2.flow.init", help="Create file-bus directories (inbox/processing/done/dup/err/topics)"
+    )
+    p_flow = sub.add_parser("m2.flow.dispatch", help="Run file-bus dispatcher")
+    p_flow.add_argument(
+        "--dir", type=str, default="data/bus", help="Bus root directory (default: data/bus)"
+    )
+    p_flow.add_argument("--loop", action="store_true", help="Keep running (polling)")
+    p_flow.add_argument(
+        "--interval", type=float, default=1.0, help="Polling interval seconds (default: 1.0)"
+    )
+    sub.add_parser("m2.flow.verify", help="Verify publish→consume loop and dedupe")
+
+    # verify (global)
     v = sub.add_parser("verify", help="Run verifiers")
     v.add_argument(
         "--module",
@@ -71,7 +86,7 @@ def main():
 
     # ---- M2.1 commands ----
     elif args.cmd == "m2.schemas":
-        m2s.verify()  # verify presence/validity of checked-in schema files
+        m2s.verify()
         print("M2.1 schemas OK.")
     elif args.cmd == "m2.validate":
         if getattr(args, "file", None):
@@ -92,6 +107,28 @@ def main():
     elif args.cmd == "m2.agent.verify":
         m2a.verify()
 
+    # ---- M2.3 commands ----
+    elif args.cmd == "m2.flow.init":
+        # just ensuring directories exists
+        from modules.m2.flow import _ensure_dirs  # local import to keep namespace lean
+
+        _ensure_dirs()
+        print("M2.3 file-bus directories ready at data/bus")
+    elif args.cmd == "m2.flow.dispatch":
+        disp = m2f.FileBusDispatcher(agent_name="bus-consumer")
+        # override root if requested (supports custom dirs)
+        if args.dir and Path(args.dir).resolve() != (Path("data") / "bus").resolve():
+            print("Note: custom --dir set; create it manually to avoid surprises.")
+        if args.loop:
+            disp.dispatch_loop(interval=args.interval)
+        else:
+            results = disp.dispatch_once()
+            for r in results:
+                print(f"{r.status.upper()}: {r.path.name} key={r.idempotency_key} id={r.event_id}")
+    elif args.cmd == "m2.flow.verify":
+        disp = m2f.FileBusDispatcher(agent_name="bus-consumer")
+        disp.verify()
+
     elif args.cmd == "verify":
         if args.module == "all":
             print("=== verify m0 ===")
@@ -102,15 +139,17 @@ def main():
             m2s.verify()
             print("=== verify m2 (agent) ===")
             m2a.verify()
+            print("=== verify m2 (flow) ===")
+            m2f.FileBusDispatcher().verify()
             print("ALL VERIFICATIONS PASSED")
         elif args.module == "m0":
             m0.verify()
         elif args.module == "m1":
             m1.verify()
         elif args.module == "m2":
-            # include both M2.1 and M2.2 verifiers
             m2s.verify()
             m2a.verify()
+            m2f.FileBusDispatcher().verify()
         else:
             raise SystemExit("Unknown module. Use m0, m1, m2, or all.")
     else:
