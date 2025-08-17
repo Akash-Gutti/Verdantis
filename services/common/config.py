@@ -1,5 +1,9 @@
-import os
+from __future__ import annotations
 
+import os
+from pathlib import Path
+
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,7 +16,7 @@ class Settings(BaseSettings):
     )
 
     # Core flags
-    offline: bool = True
+    offline: bool = Field(default=True)
     mode: str = "cpu-first"
     bus_backend: str = "file"
     redis_url: str = "redis://localhost:6379/0"
@@ -29,9 +33,23 @@ class Settings(BaseSettings):
 
     # Models & device
     hf_home: str | None = None
-    embedding_model: str = "intfloat/e5-base"
-    mnli_model: str = "roberta-base-mnli"
+    embedding_model: str = Field(default="intfloat/e5-base")
+    mnli_model: str = Field(default="joeddav/xlm-roberta-large-xnli")
     force_device: str | None = None
+
+    # NEW: RAG/coverage config
+    rvs_index_dir: Path = Field(default="data/index/m4_faiss")
+    rvs_k: int = Field(default=5)
+    rvs_max_sentences: int = Field(default=4)
+    rvs_gate_enabled: bool = Field(default=True)
+    rvs_coverage_threshold: float = Field(default=0.6)
+    rvs_metrics_window: int = Field(default=256)
+
+    model_config = SettingsConfigDict(
+        env_prefix="",  # or "RVS_" if you prefer namespacing
+        case_sensitive=False,
+        extra="ignore",
+    )
 
 
 settings = Settings()
