@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import argparse
 
-from . import agents as m2a
-from . import flow as m2f
-from . import replay as m2r
-from . import schemas as m2s
+from . import m2_1_schemas as m2s
+from . import m2_2_agents as m2a
+from . import m2_3_flow as m2f
+from . import m2_4_replay as m2r
 
 
 # ---- handlers ----
@@ -43,7 +43,7 @@ def _handle_m2_agent_verify(_: argparse.Namespace) -> None:
 
 def _handle_m2_flow_init(_: argparse.Namespace) -> None:
     # create bus dirs
-    from .flow import _ensure_dirs  # local import keeps namespace tidy
+    from .m2_3_flow import _ensure_dirs  # local import keeps namespace tidy
 
     _ensure_dirs()
     print("M2.3 file-bus directories ready at data/bus")

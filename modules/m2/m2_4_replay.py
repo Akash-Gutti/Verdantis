@@ -12,11 +12,17 @@ from typing import Iterable, List, Optional, Tuple
 import psycopg
 from dotenv import load_dotenv
 
-from . import schemas as m2s  # for event_type -> schema filename map & validation
+from . import m2_1_schemas as m2s  # for event_type -> schema filename map & validation
+from .m2_1_schemas import _content_hash  # reuse canonical hashing
 
 # Local imports (no circular: replay -> flow -> schemas)
-from .flow import INBOX, TOPICS_DIR, TOPICS_PATH, FileBusDispatcher, _ensure_dirs  # type: ignore
-from .schemas import _content_hash  # reuse canonical hashing
+from .m2_3_flow import (  # type: ignore
+    INBOX,
+    TOPICS_DIR,
+    TOPICS_PATH,
+    FileBusDispatcher,
+    _ensure_dirs,
+)
 
 ROOT = Path(__file__).resolve().parents[2]  # repo root
 BUS_ROOT = ROOT / "data" / "bus"

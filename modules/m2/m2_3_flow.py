@@ -13,9 +13,10 @@ from typing import Optional
 import psycopg
 from dotenv import load_dotenv
 
+from .m2_1_schemas import _content_hash  # used to synthesize fresh idempotency keys
+
 # Local imports
-from .agents import BaseAgent  # validates & writes with idempotency
-from .schemas import _content_hash  # used to synthesize fresh idempotency keys
+from .m2_2_agents import BaseAgent  # validates & writes with idempotency
 
 ROOT = Path(__file__).resolve().parents[2]  # repo root (…/modules/m2 -> …/)
 BUS_ROOT = ROOT / "data" / "bus"
