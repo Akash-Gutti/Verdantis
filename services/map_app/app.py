@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import streamlit as st
@@ -18,13 +19,9 @@ from modules.m5.m5_2_data import (
 
 # --- helpers ---------------------------------------------------------------
 def hard_refresh() -> None:
-    """Clear Streamlit caches and rerun (works on new/old Streamlit)."""
     st.cache_data.clear()
     if hasattr(st, "rerun"):
         st.rerun()
-    # Fall back for very old versions
-    if hasattr(st, "experimental_rerun"):  # pragma: no cover
-        st.experimental_rerun()  # type: ignore[attr-defined]
 
 
 @st.cache_data(show_spinner=False, ttl=30)
@@ -42,35 +39,62 @@ def _asset_list(limit: int) -> List[tuple[str, str]]:
     return fetch_asset_list(limit=limit)
 
 
-# --- page -----------------------------------------------------------------
+def _role_colors(role: str) -> Dict[str, str]:
+    if role == "regulator":
+        return {"asset": "#0041a8", "overlay": "#b30000"}  # blue, red
+    if role == "investor":
+        return {"asset": "#0e7c7b", "overlay": "#6c757d"}  # teal, gray
+    return {"asset": "#2a9d8f", "overlay": "#aaaaaa"}  # public
+
+
+def _risk_score(published_at: Optional[str], citations: int) -> float:
+    """
+    Simple investor score: citations weight + freshness bonus.
+    """
+    c = max(int(citations or 0), 0)
+    fresh = 0.0
+    if published_at:
+        try:
+            dt = datetime.fromisoformat(str(published_at).replace("Z", "+00:00"))
+        except Exception:
+            dt = None
+        if dt:
+            days = max((datetime.now(timezone.utc) - dt).days, 0)
+            fresh = max(0.0, (365.0 - float(days)) / 365.0)  # 0..1
+    return (3.0 * float(c)) + (2.0 * fresh)
+
+
+# --------------- page --------------------
+
 st.set_page_config(
-    page_title="Verdantis | Digital Twin (M5.2)",
+    page_title="Verdantis | Digital Twin (M5.4)",
     layout="wide",
     page_icon="🌍",
 )
 
-st.title("🌍 Verdantis — Geospatial Digital Twin (M5.2)")
+st.title("🌍 verdantis — Geospatial Digital Twin (M5.4)")
 st.caption(
-    "Map + overlays. Evidence panel shows docs & citation counts; " "role theming toggles filters."
+    "Map + overlays. Evidence panel shows docs, citations, KG edges, proof bundle id. "
+    "Role theming affects filters, sorting, and styling."
 )
 
-# Sidebar controls
+# Sidebar
 with st.sidebar:
     st.header("Controls")
     role = st.radio("Role", ["regulator", "investor", "public"], index=0)
 
-    # YEARS slider (1–5) → convert to days
     years = st.slider("Event window (years)", 1, 5, 1, step=1)
     days = int(years) * 365
 
-    # Gate view default: regulators require ≥2 citations
-    require_gate = st.checkbox(
-        "Require ≥2 citations (gate view)",
-        value=(role == "regulator"),
+    # Enforce gate for regulator regardless of checkbox
+    require_gate_opt_in = st.checkbox(
+        "Require ≥2 citations (gate view)", value=(role == "regulator")
     )
 
     limit = st.slider("Max features", 50, 1000, 300, step=50)
-    show_overlay = st.checkbox("Show proximity overlay (250m)", value=True)
+
+    # Role-driven overlay visibility: public hides overlays regardless
+    show_overlay_opt = st.checkbox("Show proximity overlay (250m)", value=True)
     show_assets = st.checkbox("Show assets", value=True)
 
     if st.button("Refresh data"):
@@ -87,7 +111,11 @@ with st.sidebar:
     )
     selected_asset: Optional[str] = id_by_name.get(sel_name) if sel_name else None
 
-# Try Leaflet via streamlit-folium first
+# Policy toggles resolved after role:
+require_gate = (role == "regulator") or require_gate_opt_in
+show_overlay = show_overlay_opt and (role != "public")
+
+# Map
 use_leaflet = True
 try:
     import folium
@@ -99,6 +127,7 @@ col_map, col_ev = st.columns((2, 1), gap="large")
 
 with col_map:
     st.subheader("Map")
+    colors = _role_colors(role)
     assets_fc = _assets_fc(limit)
     overlays_fc = _overlays_fc(limit) if show_overlay else {"features": []}
 
@@ -110,7 +139,7 @@ with col_map:
         if show_assets and assets_fc.get("features"):
 
             def _style(_: Dict[str, Any]) -> Dict[str, Any]:
-                return {"color": "#3388ff", "weight": 2, "fillOpacity": 0.2}
+                return {"color": colors["asset"], "weight": 2, "fillOpacity": 0.2}
 
             gj = folium.GeoJson(
                 data=assets_fc,
@@ -125,7 +154,7 @@ with col_map:
             folium.GeoJson(
                 data=overlays_fc,
                 name="Overlay (250m)",
-                style_function=lambda x: {"color": "#999999", "weight": 1},
+                style_function=lambda x: {"color": colors["overlay"], "weight": 2},
             ).add_to(m)
 
         folium.LayerControl(collapsed=False).add_to(m)
@@ -135,9 +164,6 @@ with col_map:
             height=650,
             returned_objects=["last_object_clicked", "last_clicked"],
         )
-
-        # Note: some environments do not return feature properties on click.
-        # Sidebar selection is the reliable path.
         obj = ret.get("last_object_clicked")
         if isinstance(obj, dict):
             props = obj.get("properties") or {}
@@ -158,9 +184,9 @@ with col_map:
                     pickable=False,
                     stroked=True,
                     filled=True,
-                    get_fill_color=[200, 200, 200],
-                    get_line_color=[120, 120, 120],
-                    line_width_min_pixels=1,
+                    get_fill_color=[180, 0, 0, 80] if role == "regulator" else [170, 170, 170, 80],
+                    get_line_color=[180, 0, 0] if role == "regulator" else [120, 120, 120],
+                    line_width_min_pixels=2 if role == "regulator" else 1,
                 )
             )
         if show_assets and assets_fc.get("features"):
@@ -171,7 +197,7 @@ with col_map:
                     pickable=True,
                     stroked=True,
                     filled=True,
-                    get_fill_color=[40, 110, 255, 80],
+                    get_fill_color=[40, 110, 255, 80] if role != "public" else [42, 157, 143, 80],
                     get_line_color=[40, 110, 255],
                     line_width_min_pixels=1,
                 )
@@ -188,7 +214,6 @@ with col_map:
 
 with col_ev:
     st.subheader("Evidence Panel")
-
     if not click_asset_id:
         st.info("Click an asset on the map or pick one in the sidebar.")
     else:
@@ -196,13 +221,27 @@ with col_ev:
         meta = fetch_asset_meta(asset_id)
         ev = fetch_evidence_windowed(
             asset_id=asset_id,
-            days=days,  # 1–5 year window
+            days=days,
             min_citations_flag=2,
-            top_k=20,
+            top_k=50,
         )
+
+        # Role policy transforms
+        if require_gate:
+            ev = [e for e in ev if int(e.get("citation_count") or 0) >= 2]
+
+        if role == "investor":
+            ev = sorted(
+                ev,
+                key=lambda e: _risk_score(e.get("published_at"), int(e.get("citation_count") or 0)),
+                reverse=True,
+            )[
+                :10
+            ]  # top by risk
+
         has_min_any = any((e.get("citation_count") or 0) >= 2 for e in ev)
 
-        # Header with basic meta
+        # Header
         if meta:
             subtitle = f"**{meta.get('name','(unknown)')}** — {meta.get('asset_type','?')}"
             locbits = ", ".join([v for v in [meta.get("city"), meta.get("country")] if v])
@@ -212,36 +251,36 @@ with col_ev:
         else:
             st.markdown(f"**Asset:** `{asset_id}`")
 
-        # Gate status
+        # Banner by role/gate
         if not ev:
-            st.warning(f"No events for this window ({years} year(s)).")
+            st.warning("No events for this selection (after role filters / window).")
         else:
-            st.caption(
+            banner = (
                 "✅ Gate passed (≥2 citations in at least one doc)"
                 if has_min_any
                 else "⚠️ Gate not passed (no doc with ≥2 citations)"
             )
+            st.caption(
+                f"Theme: **{role}** — {banner}"
+                + (" • URLs redacted for public view" if role == "public" else "")
+            )
 
+            # Render table per role
             rows: List[Dict[str, Any]] = []
             for e in ev:
-                if require_gate and (e.get("citation_count") or 0) < 2:
-                    continue
-                rows.append(
-                    {
-                        "title": e.get("title") or "",
-                        "date": str(e.get("published_at") or "")[:19],
-                        "source": e.get("source") or "",
-                        "citations": int(e.get("citation_count") or 0),
-                        "url": e.get("url") or "",
-                    }
-                )
-            if not rows and ev:
-                st.info("No docs meet the ≥2 citations filter.")
-            else:
-                st.dataframe(rows, use_container_width=True, hide_index=True)
+                row = {
+                    "title": e.get("title") or "",
+                    "date": str(e.get("published_at") or "")[:19],
+                    "citations": int(e.get("citation_count") or 0),
+                }
+                if role != "public":
+                    row["source"] = e.get("source") or ""
+                    row["url"] = e.get("url") or ""
+                rows.append(row)
 
-            # --- M5.3: doc selection + details ---
-            # Build a small selector list (title → doc_sha256)
+            st.dataframe(rows, use_container_width=True, hide_index=True)
+
+            # --- M5.3 details: doc select + bundle + citations + KG edges ---
             title_to_sha = {}
             for e in ev:
                 t = (e.get("title") or "").strip() or "(untitled)"
@@ -255,36 +294,25 @@ with col_ev:
             sel_sha = title_to_sha.get(sel_doc_title or "")
 
             if sel_sha:
-                # Proof bundle id
                 bundle_id = fetch_doc_proof_bundle(sel_sha) or "(none)"
                 st.markdown(f"**Proof bundle id:** `{bundle_id}`")
 
-                # Citations / clauses
                 st.markdown("**Citations**")
                 cits = fetch_doc_citations(sel_sha, top_k=12)
                 if not cits:
                     st.info("No clauses found for this document.")
                 else:
-                    st.dataframe(
-                        cits,
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+                    st.dataframe(cits, use_container_width=True, hide_index=True)
 
-                # KG edges
                 st.markdown("**Knowledge Graph edges (from clauses)**")
                 edges = fetch_kg_edges(asset_id, sel_sha, top_k=12)
                 if not edges:
                     st.info("No edges generated for this document.")
                 else:
-                    st.dataframe(
-                        edges,
-                        use_container_width=True,
-                        hide_index=True,
-                    )
+                    st.dataframe(edges, use_container_width=True, hide_index=True)
 
 st.markdown("---")
 st.caption(
-    "Tip: If map clicks don’t select an asset, use the sidebar selector. "
-    "The refresh button clears caches and reruns the app."
+    "Role theming affects filters (gate), sorting, styling, and visibility. "
+    "Use Refresh data after DB updates."
 )
