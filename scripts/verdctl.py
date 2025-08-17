@@ -1,4 +1,3 @@
-# scripts/verdctl.py
 import argparse
 import os
 import sys
@@ -31,6 +30,10 @@ def main():
     from modules.m2 import cli as m2cli
 
     m2cli.register(sub, verifiers)
+
+    from modules.m3 import cli as m3cli
+
+    m3cli.register(sub, verifiers)
 
     args = parser.parse_args()
 
