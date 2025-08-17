@@ -4,7 +4,10 @@ from typing import Any, Dict, List, Optional
 
 import streamlit as st
 
+from modules.m5.m5_2_data import fetch_doc_citations  # NEW
+from modules.m5.m5_2_data import fetch_doc_proof_bundle  # NEW
 from modules.m5.m5_2_data import fetch_evidence_windowed  # ← use this
+from modules.m5.m5_2_data import fetch_kg_edges  # NEW
 from modules.m5.m5_2_data import (
     fetch_asset_list,
     fetch_asset_meta,
@@ -236,6 +239,49 @@ with col_ev:
                 st.info("No docs meet the ≥2 citations filter.")
             else:
                 st.dataframe(rows, use_container_width=True, hide_index=True)
+
+            # --- M5.3: doc selection + details ---
+            # Build a small selector list (title → doc_sha256)
+            title_to_sha = {}
+            for e in ev:
+                t = (e.get("title") or "").strip() or "(untitled)"
+                title_to_sha[t] = str(e.get("doc_sha256") or "")
+
+            sel_doc_title = st.selectbox(
+                "Select a document to inspect",
+                options=list(title_to_sha.keys()),
+                index=0 if title_to_sha else None,
+            )
+            sel_sha = title_to_sha.get(sel_doc_title or "")
+
+            if sel_sha:
+                # Proof bundle id
+                bundle_id = fetch_doc_proof_bundle(sel_sha) or "(none)"
+                st.markdown(f"**Proof bundle id:** `{bundle_id}`")
+
+                # Citations / clauses
+                st.markdown("**Citations**")
+                cits = fetch_doc_citations(sel_sha, top_k=12)
+                if not cits:
+                    st.info("No clauses found for this document.")
+                else:
+                    st.dataframe(
+                        cits,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+                # KG edges
+                st.markdown("**Knowledge Graph edges (from clauses)**")
+                edges = fetch_kg_edges(asset_id, sel_sha, top_k=12)
+                if not edges:
+                    st.info("No edges generated for this document.")
+                else:
+                    st.dataframe(
+                        edges,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
 
 st.markdown("---")
 st.caption(

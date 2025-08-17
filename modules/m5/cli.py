@@ -13,6 +13,7 @@ from .m5_1_views import (
     create_views_after_bind,
     verify,
 )
+from .m5_3_views import create_m53_views, verify_m53
 from .m5_seed_assets import seed_from_geojson
 
 
@@ -157,3 +158,13 @@ def register(
     p_map.set_defaults(func=_cmd_map)
 
     verifiers["m5"] = lambda: _cmd_verify(argparse.Namespace())
+
+    p_ev = m5_sub.add_parser("evidence-views", help="Create/refresh M5.3 evidence views")
+    p_ev.set_defaults(func=lambda _: (create_m53_views(), print("✅ M5.3 views created.")))
+
+    p_ev_v = m5_sub.add_parser("evidence-verify", help="Verify M5.3 evidence views")
+    p_ev_v.set_defaults(
+        func=lambda _: (
+            lambda c, e, b: print(f"M5.3 verify → citations={c}, edges={e}, bundles={b}")
+        )(*verify_m53())
+    )

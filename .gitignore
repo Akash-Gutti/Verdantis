@@ -11,6 +11,7 @@ venv/
 
 # Data & models
 data/bus/
+data/docs/
 data/interim/
 data/raw/
 data/archived_scripts/

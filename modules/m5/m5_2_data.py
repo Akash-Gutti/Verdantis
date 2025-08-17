@@ -135,3 +135,43 @@ def fetch_evidence(asset_id: str, top_k: int = 10) -> List[Dict[str, Any]]:
         cur.execute(sql, (asset_id, top_k))
         cols = [d[0] for d in cur.description]
         return [dict(zip(cols, r)) for r in cur.fetchall()]
+
+
+def fetch_doc_citations(doc_sha256: str, top_k: int = 12) -> List[Dict[str, Any]]:
+    sql = """
+    SELECT page, clause_type, snippet
+    FROM vw_doc_citations_detail
+    WHERE doc_sha256 = %s
+    ORDER BY page ASC
+    LIMIT %s;
+    """
+    with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+        cur.execute(sql, (doc_sha256, top_k))
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, r)) for r in cur.fetchall()]
+
+
+def fetch_doc_proof_bundle(doc_sha256: str) -> str:
+    sql = """
+    SELECT bundle_id
+    FROM vw_doc_proof_bundle
+    WHERE doc_sha256 = %s
+    """
+    with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+        cur.execute(sql, (doc_sha256,))
+        row = cur.fetchone()
+        return str(row[0]) if row else ""
+
+
+def fetch_kg_edges(asset_id: str, doc_sha256: str, top_k: int = 12) -> List[Dict[str, Any]]:
+    sql = """
+    SELECT src_type, src_id, dst_type, dst_id, label, weight
+    FROM vw_kg_edges_from_clauses
+    WHERE doc_sha256 = %s AND src_id = %s
+    ORDER BY weight DESC
+    LIMIT %s;
+    """
+    with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+        cur.execute(sql, (doc_sha256, asset_id, top_k))
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, r)) for r in cur.fetchall()]
