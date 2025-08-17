@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .m4_1_index import build_index
 from .m4_2_draft_verify import ask as _ask
+from .m4_3_coverage import ask_with_coverage as _ask_cov
 
 
 def _cmd_m4_index(args: argparse.Namespace) -> None:
@@ -31,6 +32,28 @@ def _cmd_m4_draftverify(args: argparse.Namespace) -> None:
     print(_json.dumps(res, ensure_ascii=False, indent=2))
     if args.out is not None:
         Path(args.out).write_text(_json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _cmd_m4_coverage(args: argparse.Namespace) -> None:
+    res = _ask_cov(
+        query=args.query,
+        index_dir=Path(args.index_dir),
+        topk=args.k,
+        max_sentences=args.max_sentences,
+    )
+    # Apply optional gate
+    if args.gate and res.get("coverage", 0.0) < float(args.threshold):
+        payload = {"needs_clarification": True, "coverage": res["coverage"]}
+    else:
+        payload = res
+
+    import json as _json
+
+    print(_json.dumps(payload, ensure_ascii=False, indent=2))
+    if args.out is not None:
+        out_path = Path(args.out)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(_json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def register(subparsers: argparse._SubParsersAction, verifiers: dict) -> None:
@@ -89,3 +112,21 @@ def register(subparsers: argparse._SubParsersAction, verifiers: dict) -> None:
     q.add_argument("--max-sentences", type=int, default=4)
     q.add_argument("--out", type=str, default=None)
     q.set_defaults(func=_cmd_m4_draftverify)
+
+    # M4.3
+    c = subparsers.add_parser(
+        "m4.coverage",
+        help="M4.3 Coverage over M4.2 result; optional gating",
+    )
+    c.add_argument("--q", "--query", dest="query", type=str, required=True)
+    c.add_argument("--index-dir", type=str, default="data/index/m4_faiss")
+    c.add_argument("--k", type=int, default=5)
+    c.add_argument("--max-sentences", type=int, default=4)
+    c.add_argument("--threshold", type=float, default=0.6)
+    c.add_argument(
+        "--gate",
+        action="store_true",
+        help="Emit {needs_clarification:true} if coverage<threshold",
+    )
+    c.add_argument("--out", type=str, default=None)
+    c.set_defaults(func=_cmd_m4_coverage)
