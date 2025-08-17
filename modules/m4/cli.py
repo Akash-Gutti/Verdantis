@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 
 from .m4_1_index import build_index
+from .m4_2_draft_verify import ask as _ask
 
 
 def _cmd_m4_index(args: argparse.Namespace) -> None:
@@ -15,6 +16,21 @@ def _cmd_m4_index(args: argparse.Namespace) -> None:
         batch_size=args.batch,
         save_vectors=args.save_vectors,
     )
+
+
+def _cmd_m4_draftverify(args: argparse.Namespace) -> None:
+    res = _ask(
+        query=args.query,
+        index_dir=Path(args.index_dir),
+        topk=args.k,
+        max_sentences=args.max_sentences,
+    )
+    # Print pretty JSON to stdout
+    import json as _json  # local import to avoid top-level costs
+
+    print(_json.dumps(res, ensure_ascii=False, indent=2))
+    if args.out is not None:
+        Path(args.out).write_text(_json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def register(subparsers: argparse._SubParsersAction, verifiers: dict) -> None:
@@ -61,3 +77,15 @@ def register(subparsers: argparse._SubParsersAction, verifiers: dict) -> None:
         help="Also save vectors.npy (for audits)",
     )
     p.set_defaults(func=_cmd_m4_index)
+
+    # m4.draftverify (NEW)
+    q = subparsers.add_parser(
+        "m4.draftverify",
+        help="M4.2 Draft + Verify (CPU NLI, no LLM)",
+    )
+    q.add_argument("--q", "--query", dest="query", type=str, required=True)
+    q.add_argument("--index-dir", type=str, default="data/index/m4_faiss")
+    q.add_argument("--k", type=int, default=5)
+    q.add_argument("--max-sentences", type=int, default=4)
+    q.add_argument("--out", type=str, default=None)
+    q.set_defaults(func=_cmd_m4_draftverify)

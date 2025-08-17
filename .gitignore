@@ -19,6 +19,7 @@ data/index/
 data/logs
 data/processed/
 .hf/
+outputs/
 models/*
 !models/.gitkeep
 
