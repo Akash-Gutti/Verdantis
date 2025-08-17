@@ -15,8 +15,10 @@ data/interim/
 data/raw/
 data/archived_scripts/
 data/event_samples/
+data/index/
 data/logs
 data/processed/
+.hf/
 models/*
 !models/.gitkeep
 

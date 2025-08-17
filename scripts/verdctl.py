@@ -35,6 +35,10 @@ def main():
 
     m3cli.register(sub, verifiers)
 
+    from modules.m4 import cli as m4cli
+
+    m4cli.register(sub, verifiers)
+
     args = parser.parse_args()
 
     if args.cmd == "verify":
