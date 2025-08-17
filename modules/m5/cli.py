@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import subprocess
 from typing import Callable, Dict
 
 from .m5_1_views import (
@@ -12,6 +14,29 @@ from .m5_1_views import (
     verify,
 )
 from .m5_seed_assets import seed_from_geojson
+
+
+def _cmd_map(_: argparse.Namespace) -> None:
+    app_path = "services/map_app/app.py"
+    if not os.path.exists(app_path):
+        raise SystemExit("Map app not found at services/map_app/app.py")
+
+    cmd = [
+        "streamlit",
+        "run",
+        app_path,
+        "--server.address",
+        "127.0.0.1",
+        "--server.port",
+        "8501",
+    ]
+
+    env = os.environ.copy()
+    # Ensure project root is on the module search path
+    env["PYTHONPATH"] = os.pathsep.join([os.getcwd(), env.get("PYTHONPATH", "")]).rstrip(os.pathsep)
+
+    print("🚀 Launching Streamlit:", " ".join(cmd))
+    subprocess.run(cmd, check=False, env=env)
 
 
 def _cmd_views(_: argparse.Namespace) -> None:
@@ -127,5 +152,8 @@ def register(
     p_bindd.add_argument("--url", help="url/link column")
     p_bindd.add_argument("--lang", help="lang column")
     p_bindd.set_defaults(func=_cmd_bind_docs)
+
+    p_map = m5_sub.add_parser("map", help="Run M5.2 Streamlit map")
+    p_map.set_defaults(func=_cmd_map)
 
     verifiers["m5"] = lambda: _cmd_verify(argparse.Namespace())
