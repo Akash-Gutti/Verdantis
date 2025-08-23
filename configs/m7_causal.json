@@ -1,14 +1,16 @@
 {
   "defaults": {
     "emission_factor_kg_per_kwh": 0.4,
-    "policy_date": "2024-04-01",
-    "timezone": "UTC"
+    "policy_date": "2025-08-12",
+    "timezone": "UTC",
+
+    "analysis_window": {
+      "before_start": null,
+      "before_end": null,
+      "after_start": null,
+      "after_end": null
+    }
   },
-  "asset_policies": [
-    {"asset_id": "asset_1", "policy_date": "2024-04-01"},
-    {"asset_id": "asset_2", "policy_date": "2024-04-01"},
-    {"asset_id": "asset_3", "policy_date": "2024-04-01"},
-    {"asset_id": "asset_4", "policy_date": "2024-04-01"},
-    {"asset_id": "asset_5", "policy_date": "2024-04-01"}
-  ]
+
+  "asset_policies": []
 }

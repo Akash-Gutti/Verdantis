@@ -1,15 +1,4 @@
-"""M7.2 BSTS-like causal effect with statsmodels UnobservedComponents.
-
-Fixes:
-- Use defaults.policy_date or infer midpoint when policy row is missing.
-- Record `policy_inferred` in results.
-- Correct plotting function and invocation.
-
-Outputs:
-- data/processed/causal/effects/<asset>_<metric>.csv
-- data/processed/causal/plots/<asset>_<metric>.png
-- data/processed/causal/effects_summary.json
-"""
+"""M7.2 BSTS-like causal effect via UnobservedComponents (robust)."""
 
 from __future__ import annotations
 
@@ -26,13 +15,12 @@ from scipy.stats import norm
 try:
     import matplotlib.pyplot as plt
 except ModuleNotFoundError as exc:  # pragma: no cover
-    raise SystemExit("matplotlib not installed. Run: pip install matplotlib") from exc
+    raise SystemExit("pip install matplotlib") from exc
 
 try:
     from statsmodels.tsa.statespace.structural import UnobservedComponents
 except ModuleNotFoundError as exc:  # pragma: no cover
-    raise SystemExit("statsmodels not installed. Run: pip install statsmodels") from exc
-
+    raise SystemExit("pip install statsmodels") from exc
 
 EFFECTS_DIR = Path("data/processed/causal/effects")
 PLOTS_DIR = Path("data/processed/causal/plots")
@@ -62,8 +50,8 @@ def _load_inputs() -> Tuple[pd.DataFrame, pd.DataFrame]:
         ts = pd.read_csv(ts_csv)
     else:
         raise FileNotFoundError("Missing ts_daily (run m7 prep).")
-
     ts["date"] = pd.to_datetime(ts["date"])
+
     pol = pd.read_csv(Path("data/processed/causal/policy_table.csv"))
     return ts, pol
 
@@ -97,17 +85,13 @@ def _ucm_forecast(
     seasonal_period: int,
     alpha: float,
 ) -> Tuple[pd.Series, pd.DataFrame]:
-    level = "local level"
-    seasonal = seasonal_period if seasonal_period and seasonal_period > 1 else None
-
     model = UnobservedComponents(
         endog=y_pre,
-        level=level,
-        seasonal=seasonal,
+        level="local level",
+        seasonal=seasonal_period if seasonal_period and seasonal_period > 1 else None,
         exog=x_pre,
     )
     res = model.fit(disp=False)
-
     pred = res.get_prediction(
         start=x_full.index[0],
         end=x_full.index[-1],
@@ -128,13 +112,12 @@ def _p_value_from_cumulative(cum_eff: float, var_sum: float) -> float:
     return 2.0 * (1.0 - float(norm.cdf(abs(z))))
 
 
-def _estimate_variance_from_ci(ci: pd.DataFrame, alpha: float) -> pd.Series:
+def _variance_from_ci(ci: pd.DataFrame, alpha: float) -> pd.Series:
     if "lower" not in ci.columns or "upper" not in ci.columns:
         return pd.Series(np.nan, index=ci.index)
     z = float(norm.ppf(1.0 - alpha / 2.0))
     half = (ci["upper"] - ci["lower"]) / 2.0
-    var = (half / z) ** 2
-    return var
+    return (half / z) ** 2
 
 
 def _fallback_counterfactual(
@@ -154,7 +137,6 @@ def _plot_asset(
     ci: pd.DataFrame,
     policy_date: pd.Timestamp,
 ) -> None:
-    """Save a PNG plot of observed vs. counterfactual with 95% CI."""
     fig, ax = plt.subplots(figsize=(10, 4))
     ax.plot(y.index, y.values, label="Observed")
     ax.plot(yhat.index, yhat.values, label="Counterfactual")
@@ -177,18 +159,15 @@ def _pick_policy_date_for_asset(
     aid: str,
     default_policy_date: Optional[str],
 ) -> Tuple[Optional[pd.Timestamp], bool]:
-    """Return (policy_date, inferred_flag)."""
     row = pol.loc[pol["asset_id"].astype(str) == str(aid)]
     if not row.empty:
         pdate = pd.to_datetime(row["policy_start_date"].iloc[0], errors="coerce")
         if pd.notna(pdate):
             return pdate, False
-
     if default_policy_date:
         pdate = pd.to_datetime(default_policy_date, errors="coerce")
         if pd.notna(pdate):
             return pdate, True
-
     dates = pd.to_datetime(df_a["date"], errors="coerce").dropna().sort_values()
     if dates.empty:
         return None, True
@@ -211,7 +190,6 @@ def _process_asset(
 
     pre_mask = y_all.index < policy_date
     post_mask = y_all.index >= policy_date
-
     if int(pre_mask.sum()) < cfg.min_pre_days:
         return {
             "asset_id": str(df_asset["asset_id"].iloc[0]),
@@ -235,16 +213,11 @@ def _process_asset(
         yhat, ci, used_fallback = _fallback_counterfactual(y_all, pre_mask)
 
     df_out = pd.DataFrame(
-        {
-            "y": y_all,
-            "yhat": yhat,
-            "lower": ci.get("lower"),
-            "upper": ci.get("upper"),
-        }
+        {"y": y_all, "yhat": yhat, "lower": ci.get("lower"), "upper": ci.get("upper")}
     )
     df_out["effect"] = df_out["y"] - df_out["yhat"]
 
-    var_series = _estimate_variance_from_ci(ci, alpha=cfg.alpha).reindex(df_out.index)
+    var_series = _variance_from_ci(ci, alpha=cfg.alpha).reindex(df_out.index)
     var_sum = float(var_series.loc[post_mask].sum(skipna=True))
 
     cum_eff = float(df_out.loc[post_mask, "effect"].sum())
@@ -280,12 +253,9 @@ def run_m7_2(
     asset: Optional[str] = None,
     config_path: str = "configs/m7_causal.json",
 ) -> Dict:
-    """Run M7.2 for all assets (or a single asset), robust policy-date selection."""
     ts, pol = _load_inputs()
     cfg_json = _load_config(config_path)
-    default_policy_date = (
-        cfg_json.get("defaults", {}).get("policy_date") if isinstance(cfg_json, dict) else None
-    )
+    default_policy_date = cfg_json.get("defaults", {}).get("policy_date")
 
     cfg = BstsConfig(
         metric=metric,
@@ -303,7 +273,6 @@ def run_m7_2(
         df_a = ts.loc[ts["asset_id"].astype(str) == str(aid)].copy()
         if df_a.empty:
             continue
-
         pdate, inferred = _pick_policy_date_for_asset(df_a, pol, aid, default_policy_date)
         if pdate is None or pd.isna(pdate):
             results.append(
@@ -314,20 +283,12 @@ def run_m7_2(
                 }
             )
             continue
-
         try:
             res = _process_asset(df_a, policy_date=pdate, cfg=cfg)
             res["policy_inferred"] = bool(inferred)
             results.append(res)
         except Exception as exc:
-            results.append(
-                {
-                    "asset_id": str(aid),
-                    "metric": metric,
-                    "error": str(exc),
-                    "status": "failed",
-                }
-            )
+            results.append({"asset_id": str(aid), "metric": metric, "error": str(exc)})
 
     eff = [r for r in results if "cum_effect" in r and np.isfinite(r["cum_effect"])]
     agg: Dict[str, object] = {
