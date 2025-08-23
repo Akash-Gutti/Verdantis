@@ -5,6 +5,10 @@
     "timezone": "UTC"
   },
   "asset_policies": [
-    { "asset_id": "asset_01", "policy_date": "2024-04-01" }
+    {"asset_id": "asset_1", "policy_date": "2024-04-01"},
+    {"asset_id": "asset_2", "policy_date": "2024-04-01"},
+    {"asset_id": "asset_3", "policy_date": "2024-04-01"},
+    {"asset_id": "asset_4", "policy_date": "2024-04-01"},
+    {"asset_id": "asset_5", "policy_date": "2024-04-01"}
   ]
 }

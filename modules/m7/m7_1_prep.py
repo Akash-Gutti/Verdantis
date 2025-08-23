@@ -5,7 +5,7 @@ Steps:
 2) Normalize columns to: timestamp | asset_id | energy_kwh | temp_c
 3) Aggregate to daily per asset (sum energy, mean temp).
 4) Compute co2_kg using emission factor from config (default 0.4 kg/kWh).
-5) Build policy_table.csv from config defaults/asset_policies.
+5) Build policy_table.csv preferring DAILY ASSETS (fallback to KG only if empty).
 6) Write outputs under data/processed/causal/.
 """
 
@@ -74,63 +74,50 @@ def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
             wide_temp = cols[cand]
             break
 
-    # Long schema detection: metric/value (+ optional unit)
+    # Long schema detection: metric/value
     has_metric = "metric" in cols and "value" in cols
 
     if wide_energy or has_metric:
-        # Build normalized frame
         base = df[[ts_col]].copy()
-        if asset_col:
-            base["asset_id"] = df[asset_col].astype(str)
-        else:
-            base["asset_id"] = "asset_01"
-
+        base["asset_id"] = df[asset_col].astype(str) if asset_col else "asset_01"
         base["timestamp"] = pd.to_datetime(df[ts_col], errors="coerce", utc=True)
 
         if has_metric:
-            # Pivot long -> wide
-            # Expect metric values like "energy_kwh" and "temp_c"
-            piv = (
-                df[[ts_col, asset_col, cols["metric"], cols["value"]]]
-                .rename(
-                    columns={
-                        ts_col: "timestamp",
-                        asset_col if asset_col else cols["metric"]: "asset_tmp",
-                        cols["metric"]: "metric",
-                        cols["value"]: "value",
-                    }
-                )
-                .assign(
-                    timestamp=lambda d: pd.to_datetime(
-                        d["timestamp"], errors="coerce", utc=True
-                    ),  # noqa: E501
-                    asset_id=lambda d: d["asset_tmp"].astype(str) if asset_col else "asset_01",
-                )[["timestamp", "asset_id", "metric", "value"]]
+            piv = df[
+                [ts_col, cols["metric"], cols["value"]] + ([asset_col] if asset_col else [])
+            ].rename(  # noqa: E501
+                columns={
+                    ts_col: "timestamp",
+                    cols["metric"]: "metric",
+                    cols["value"]: "value",
+                    asset_col: "asset_id" if asset_col else None,
+                }
             )
+            if "asset_id" not in piv.columns:
+                piv["asset_id"] = "asset_01"
+            piv["timestamp"] = pd.to_datetime(
+                piv["timestamp"], errors="coerce", utc=True
+            )  # noqa: E501
             w = piv.pivot_table(
                 index=["timestamp", "asset_id"],
                 columns="metric",
                 values="value",
-                aggfunc="mean",  # noqa: E501
+                aggfunc="mean",
             ).reset_index()
-            # Standardize expected names if present
             if "kwh" in w.columns and "energy_kwh" not in w.columns:
                 w = w.rename(columns={"kwh": "energy_kwh"})
             if "temperature" in w.columns and "temp_c" not in w.columns:
                 w = w.rename(columns={"temperature": "temp_c"})
             if "temperature_c" in w.columns and "temp_c" not in w.columns:
                 w = w.rename(columns={"temperature_c": "temp_c"})
-
             out = w
         else:
-            # Wide: we already have energy/temp columns
             out = base
             if wide_energy:
                 out["energy_kwh"] = pd.to_numeric(df[wide_energy], errors="coerce")
             if wide_temp:
                 out["temp_c"] = pd.to_numeric(df[wide_temp], errors="coerce")
 
-        # Final column set
         for col in ["energy_kwh", "temp_c"]:
             if col not in out.columns:
                 out[col] = pd.NA
@@ -148,12 +135,10 @@ def _aggregate_daily(df: pd.DataFrame, tz: str) -> pd.DataFrame:
     df = df.dropna(subset=["timestamp"]).copy()
     if df.empty:
         raise ValueError("No valid timestamps after parsing.")
-    # Convert to target tz; timestamps already UTC. We'll floor to date.
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
     df["timestamp"] = df["timestamp"].dt.tz_convert(tz) if tz else df["timestamp"]
     df["date"] = df["timestamp"].dt.date
 
-    # Aggregate per asset/day
     grp = df.groupby(["asset_id", "date"], dropna=False, as_index=False).agg(
         energy_kwh=("energy_kwh", "sum"),
         temp_c=("temp_c", "mean"),
@@ -161,15 +146,14 @@ def _aggregate_daily(df: pd.DataFrame, tz: str) -> pd.DataFrame:
     )
     grp["energy_kwh"] = pd.to_numeric(grp["energy_kwh"], errors="coerce").fillna(0.0)
     grp["temp_c"] = pd.to_numeric(grp["temp_c"], errors="coerce")
+    grp["weekday"] = pd.to_datetime(grp["date"]).dt.weekday
+    grp["is_weekend"] = (grp["weekday"] >= 5).astype(int)
     return grp
 
 
 def _append_co2(grp: pd.DataFrame, ef_kg_per_kwh: float) -> pd.DataFrame:
     grp = grp.copy()
     grp["co2_kg"] = grp["energy_kwh"].astype(float) * float(ef_kg_per_kwh)
-    # Weekend flag for basic covariate
-    grp["weekday"] = pd.to_datetime(grp["date"]).dt.weekday
-    grp["is_weekend"] = (grp["weekday"] >= 5).astype(int)
     return grp
 
 
@@ -197,11 +181,9 @@ def _build_policy_table(
 ) -> pd.DataFrame:
     default_date = defaults.get("policy_date")
     rows: List[Tuple[str, str]] = []
-    # Asset-specific overrides
     per_asset = {str(x.get("asset_id")): x.get("policy_date") for x in asset_policies}
 
     if not assets:
-        # Fallback single asset
         assets = ["asset_01"]
 
     for aid in assets:
@@ -213,7 +195,6 @@ def _build_policy_table(
 
 def _save_outputs(ts_daily: pd.DataFrame, policy: pd.DataFrame, meta: Dict) -> None:
     _ensure_dir(OUT_DIR)
-    # Parquet preferred; CSV fallback if pyarrow missing
     try:
         ts_daily.to_parquet(OUT_DIR / "ts_daily.parquet", index=False)
     except Exception:
@@ -238,9 +219,10 @@ def run_m7_1(config_path: str, iot_path: str) -> Dict:
     daily = _aggregate_daily(norm, tz=tz)
     daily = _append_co2(daily, ef_kg_per_kwh=ef)
 
-    # Asset list from KG (if present) else from daily
-    from_kg = _load_assets_from_kg()
-    assets = from_kg if from_kg else sorted(daily["asset_id"].astype(str).unique())
+    # FIX: prefer assets from daily (actual modeling set), fallback to KG
+    assets_daily = sorted(daily["asset_id"].astype(str).unique())
+    assets_kg = _load_assets_from_kg()
+    assets = assets_daily if assets_daily else assets_kg
 
     policy = _build_policy_table(assets, defaults, asset_policies)
 
@@ -249,6 +231,7 @@ def run_m7_1(config_path: str, iot_path: str) -> Dict:
         "rows_daily": int(len(daily)),
         "emission_factor_kg_per_kwh": ef,
         "timezone": tz,
+        "policy_assets_source": "daily" if assets == assets_daily else "kg",
         "has_parquet": True,
     }
 
