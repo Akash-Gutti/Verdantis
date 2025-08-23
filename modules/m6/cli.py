@@ -8,6 +8,7 @@ from typing import Callable, Dict
 from .m6_1_stac_fetch import run_m6_1
 from .m6_2_diff import run_m6_2
 from .m6_3_events import run_m6_3
+from .m6_4_overlay import run_m6_4
 
 
 def register(subparsers: argparse._SubParsersAction, verifiers: Dict[str, Callable]):
@@ -47,6 +48,18 @@ def register(subparsers: argparse._SubParsersAction, verifiers: Dict[str, Callab
     p_events = m6_sub.add_parser("events", help="M6.3 write change events to CSV + bus")
     p_events.set_defaults(func=_cmd_m6_events)
 
+    # m6 overlay
+    p_overlay = m6_sub.add_parser("overlay", help="M6.4 build GeoJSON overlays")
+    p_overlay.add_argument("--min-area-px", type=int, default=None, dest="min_area_px")
+    p_overlay.add_argument(
+        "--connectivity",
+        type=int,
+        choices=[1, 2],
+        default=None,
+        help="Connected components: 1=4-neighbourhood, 2=8-neighbourhood",
+    )
+    p_overlay.set_defaults(func=_cmd_m6_overlay)
+
     # register module-level verifier
     verifiers["m6"] = verify
 
@@ -76,6 +89,12 @@ def _cmd_m6_events(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_m6_overlay(args: argparse.Namespace) -> int:
+    run_m6_4(min_area_px=args.min_area_px, connectivity=args.connectivity)
+    print("✅ M6.4 overlay generation complete.")
+    return 0
+
+
 def verify() -> bool:
     """Verifier for M6: require index, then prefer events CSV presence."""
     from pathlib import Path
@@ -84,6 +103,11 @@ def verify() -> bool:
     if not idx.exists():
         print("M6 verify → missing data/interim/m6/index.json")
         return False
+
+    overlay = Path("data/processed/overlays/m6_changes.geojson")
+    if overlay.exists():
+        print("M6 verify → overlay present.")
+        return True
 
     events_csv = Path("data/processed/events/satellite_change_events.csv")
     if events_csv.exists():
