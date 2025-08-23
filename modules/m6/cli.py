@@ -7,6 +7,7 @@ from typing import Callable, Dict
 
 from .m6_1_stac_fetch import run_m6_1
 from .m6_2_diff import run_m6_2
+from .m6_3_events import run_m6_3
 
 
 def register(subparsers: argparse._SubParsersAction, verifiers: Dict[str, Callable]):
@@ -42,6 +43,11 @@ def register(subparsers: argparse._SubParsersAction, verifiers: Dict[str, Callab
     )
     p_diff.set_defaults(func=_cmd_m6_diff)
 
+    # m6 events
+    p_events = m6_sub.add_parser("events", help="M6.3 write change events to CSV + bus")
+    p_events.set_defaults(func=_cmd_m6_events)
+
+    # register module-level verifier
     verifiers["m6"] = verify
 
 
@@ -64,8 +70,14 @@ def _cmd_m6_diff(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_m6_events(args: argparse.Namespace) -> int:
+    run_m6_3()
+    print("✅ M6.3 event writing complete.")
+    return 0
+
+
 def verify() -> bool:
-    """Verifier for M6."""
+    """Verifier for M6: require index, then prefer events CSV presence."""
     from pathlib import Path
 
     idx = Path("data/interim/m6/index.json")
@@ -73,12 +85,16 @@ def verify() -> bool:
         print("M6 verify → missing data/interim/m6/index.json")
         return False
 
-    # If any AOI has change_mask.tif, we consider M6.2 passed for that AOI.
+    events_csv = Path("data/processed/events/satellite_change_events.csv")
+    if events_csv.exists():
+        print("M6 verify → event CSV present.")
+        return True
+
     interim = Path("data/interim/m6")
     masks = list(interim.glob("*/change_mask.tif"))
     if masks:
-        print(f"M6 verify → masks present: {len(masks)} AOI(s).")
-        return True
+        print("M6 verify → masks present but no event CSV yet (run m6 events).")
+        return False
 
     print("M6 verify → no change masks yet (run m6 diff).")
-    return True
+    return False
