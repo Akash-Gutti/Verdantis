@@ -9,6 +9,7 @@ from typing import Callable, Dict
 
 from .m7_1_prep import run_m7_1
 from .m7_2_bsts import run_m7_2
+from .m7_3_scm import run_m7_3
 
 
 def register(subparsers: argparse._SubParsersAction, verifiers: Dict[str, Callable]):
@@ -48,6 +49,30 @@ def register(subparsers: argparse._SubParsersAction, verifiers: Dict[str, Callab
     )
     p_bsts.set_defaults(func=_cmd_m7_bsts)
 
+    # m7 scm
+    p_scm = m7_sub.add_parser("scm", help="M7.3 SCM what-if (policy on/off, retrofit)")
+    p_scm.add_argument("--metric", choices=["energy_kwh", "co2_kg"], default="energy_kwh")
+    p_scm.add_argument(
+        "--policy",
+        choices=["on", "off"],
+        default="off",
+        help="Counterfactual policy setting for simulation",
+    )
+    p_scm.add_argument(
+        "--retrofit-scale",
+        type=float,
+        default=1.0,
+        dest="retrofit_scale",
+        help="Scale the policy effect γ (e.g., 1.5 = 50% stronger)",
+    )
+    p_scm.add_argument("--start-date", default=None, help="YYYY-MM-DD (optional)")
+    p_scm.add_argument("--end-date", default=None, help="YYYY-MM-DD (optional)")
+    p_scm.add_argument("--asset", default=None, help="Single asset_id (optional)")
+    p_scm.add_argument(
+        "--config", default="configs/m7_causal.json", help="Config path (for emission factor)"
+    )
+    p_scm.set_defaults(func=_cmd_m7_scm)
+
     # register verifier
     verifiers["m7"] = verify
 
@@ -68,6 +93,20 @@ def _cmd_m7_bsts(args: argparse.Namespace) -> int:
         config_path=args.config,
     )
     print("✅ M7.2 causal impact complete.")
+    return 0
+
+
+def _cmd_m7_scm(args: argparse.Namespace) -> int:
+    run_m7_3(
+        metric=args.metric,
+        policy=args.policy,
+        retrofit_scale=args.retrofit_scale,
+        start_date=args.start_date,
+        end_date=args.end_date,
+        asset=args.asset,
+        config_path=args.config,
+    )
+    print("✅ M7.3 SCM what-if complete.")
     return 0
 
 
