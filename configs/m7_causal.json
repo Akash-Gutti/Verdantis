@@ -1,0 +1,10 @@
+{
+  "defaults": {
+    "emission_factor_kg_per_kwh": 0.4,
+    "policy_date": "2024-04-01",
+    "timezone": "UTC"
+  },
+  "asset_policies": [
+    { "asset_id": "asset_01", "policy_date": "2024-04-01" }
+  ]
+}

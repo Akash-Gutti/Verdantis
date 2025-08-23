@@ -47,6 +47,10 @@ def main():
 
     m6cli.register(sub, verifiers)
 
+    from modules.m7 import cli as m7cli
+
+    m7cli.register(sub, verifiers)
+
     args = parser.parse_args()
 
     if args.cmd == "verify":
