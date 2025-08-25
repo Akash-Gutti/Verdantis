@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Tuple
 
 from .m10_1_filters import run_filters_cli
+from .m10_2_channels import run_channels_cli
 
 
 def _cmd_filters(args: Namespace) -> int:
@@ -19,6 +20,17 @@ def _cmd_filters(args: Namespace) -> int:
     print(
         f"M10.1 filters → matched={matched}, unmatched={unmatched} " f"→ {args.out}, {args.metrics}"
     )
+    return 0
+
+
+def _cmd_channels(args: Namespace) -> int:  # NEW
+    sent, skipped = run_channels_cli(
+        matched_path=Path(args.matched),
+        cfg_path=Path(args.config),
+        results_path=Path(args.results),
+        metrics_path=Path(args.metrics),
+    )
+    print(f"M10.2 channels → sent={sent}, skipped={skipped} " f"→ {args.results}, {args.metrics}")
     return 0
 
 
@@ -69,6 +81,30 @@ def register(subparsers: ArgumentParser, verifiers: Dict[str, Any]) -> None:
         help="Output file for metrics",
     )
     p_filters.set_defaults(func=_cmd_filters)
+
+    # NEW: channels subcommand
+    p_channels = sp.add_parser("channels", help="Run M10.2 channel routing on matched events")
+    p_channels.add_argument(
+        "--matched",
+        default="data/processed/m10/filtered_events.json",
+        help="Input: matched events from M10.1",
+    )
+    p_channels.add_argument(
+        "--config",
+        default="configs/m10_channels.json",
+        help="Channels routing config JSON",
+    )
+    p_channels.add_argument(
+        "--results",
+        default="data/processed/m10/channels_results.json",
+        help="Output file for per-attempt results",
+    )
+    p_channels.add_argument(
+        "--metrics",
+        default="data/processed/m10/channels_metrics.json",
+        help="Output file for channel metrics",
+    )
+    p_channels.set_defaults(func=_cmd_channels)
 
     # attach verifier for `scripts/verdctl.py verify -m m10`
     verifiers["m10"] = verify_m10

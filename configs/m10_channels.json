@@ -1,0 +1,60 @@
+{
+  "routes": [
+    {
+      "id": "route_policy_to_webhook",
+      "match": {
+        "subscription_ids": ["policy_high_plus"],
+        "severity_at_least": "high"
+      },
+      "channels": [
+        {
+          "type": "webhook",
+          "id": "wh_policy",
+          "outbox_dir": "data/processed/m10/outbox/webhook/policy",
+          "max_per_run": 100
+        }
+      ]
+    },
+    {
+      "id": "route_sat_to_email",
+      "match": {
+        "subscription_ids": ["sat_ndvi_drop"]
+      },
+      "channels": [
+        {
+          "type": "email",
+          "id": "email_sat_ops",
+          "to": ["ops@example.com"],
+          "subject_prefix": "[Verdantis]",
+          "outbox_dir": "data/processed/m10/outbox/email/sat_ops",
+          "max_per_run": 100
+        }
+      ]
+    },
+    {
+      "id": "route_zk_to_both",
+      "match": {
+        "topics": ["zk.issue", "zk.verify"]
+      },
+      "channels": [
+        {
+          "type": "webhook",
+          "id": "wh_zk",
+          "outbox_dir": "data/processed/m10/outbox/webhook/zk",
+          "max_per_run": 100
+        },
+        {
+          "type": "email",
+          "id": "email_zk",
+          "to": ["compliance@example.com"],
+          "subject_prefix": "[Verdantis]",
+          "outbox_dir": "data/processed/m10/outbox/email/zk",
+          "max_per_run": 100
+        }
+      ]
+    }
+  ],
+  "rate_limit": {
+    "max_per_run": 1000
+  }
+}
