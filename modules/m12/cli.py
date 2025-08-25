@@ -16,6 +16,7 @@ from .m12_1_obs import (
     write_prometheus_textfile,
 )
 from .m12_2_ci import run_ci_cli
+from .m12_3_eval import evaluate_causal, evaluate_change, evaluate_rag
 
 
 def _cmd_metrics_export(args: Namespace) -> int:
@@ -82,6 +83,54 @@ def _cmd_ci_run(args: Namespace) -> int:
         f"→ {args.report}, {args.bundle}"
     )
     return 0 if ok else 1
+
+
+def _cmd_eval_rag(args: Namespace) -> int:
+    res = evaluate_rag(input_path=Path(args.input), out_path=Path(args.out))
+    print(
+        "M12.3 eval-rag → "
+        f"items={res.items} cite_f1_micro={res.cite_f1_micro} nli_acc={res.nli_accuracy} → {args.out}"
+    )
+    return 0
+
+
+def _cmd_eval_causal(args: Namespace) -> int:
+    res = evaluate_causal(input_path=Path(args.input), out_path=Path(args.out))
+    print(
+        "M12.3 eval-causal → "
+        f"assets={res.assets} ΔRMSE_mean={res.delta_mean} placeboΔ={res.placebo_delta_mean} → {args.out}"
+    )
+    return 0
+
+
+def _cmd_eval_change(args: Namespace) -> int:
+    ks = [int(k) for k in (args.k or "").split(",") if k.strip().isdigit()] if args.k else None
+    fracs = [float(x) for x in (args.frac or "").split(",") if x.strip()] if args.frac else None
+    res = evaluate_change(
+        input_path=Path(args.input),
+        out_path=Path(args.out),
+        k_list=ks,
+        frac_list=fracs,
+    )
+    print(
+        "M12.3 eval-change → "
+        f"items={res.items} p@k={res.precision_at_k} p@frac={res.precision_at_frac} → {args.out}"
+    )
+    return 0
+
+
+def _cmd_eval_all(args: Namespace) -> int:
+    base = Path(args.dir)
+    out = Path(args.out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    # RAG
+    evaluate_rag(base / "rag_eval.json", out / "rag_report.json")
+    # Causal
+    evaluate_causal(base / "causal_eval.json", out / "causal_report.json")
+    # Change
+    evaluate_change(base / "change_eval.json", out / "change_report.json")
+    print(f"M12.3 eval-all → read {base} → wrote reports to {out}")
+    return 0
 
 
 def verify_m12() -> Tuple[bool, str]:
@@ -153,5 +202,28 @@ def register(subparsers: ArgumentParser, verifiers: Dict[str, Any]) -> None:
     p_ci.add_argument("--report", default="data/observability/ci/ci_report.json")
     p_ci.add_argument("--bundle", default="dist/verdantis_bundle.zip")
     p_ci.set_defaults(func=_cmd_ci_run)
+
+    # --- M12.3 eval commands ---
+    p_er = sp.add_parser("eval-rag", help="Evaluate RAG veracity (citations + NLI)")
+    p_er.add_argument("--input", default="data/eval/rag_eval.json")
+    p_er.add_argument("--out", default="data/eval/reports/rag_report.json")
+    p_er.set_defaults(func=_cmd_eval_rag)
+
+    p_ec = sp.add_parser("eval-causal", help="Evaluate causal fit (pre/post RMSE + placebo)")
+    p_ec.add_argument("--input", default="data/eval/causal_eval.json")
+    p_ec.add_argument("--out", default="data/eval/reports/causal_report.json")
+    p_ec.set_defaults(func=_cmd_eval_causal)
+
+    p_eg = sp.add_parser("eval-change", help="Evaluate change detection (precision@K)")
+    p_eg.add_argument("--input", default="data/eval/change_eval.json")
+    p_eg.add_argument("--out", default="data/eval/reports/change_report.json")
+    p_eg.add_argument("--k", default="1,5,10,20", help="Comma-separated Ks")
+    p_eg.add_argument("--frac", default="0.1,0.2", help="Comma-separated fractions")
+    p_eg.set_defaults(func=_cmd_eval_change)
+
+    p_ea = sp.add_parser("eval-all", help="Run all evals from a directory")
+    p_ea.add_argument("--dir", default="data/eval")
+    p_ea.add_argument("--out-dir", default="data/eval/reports")
+    p_ea.set_defaults(func=_cmd_eval_all)
 
     verifiers["m12"] = verify_m12

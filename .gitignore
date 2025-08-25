@@ -13,6 +13,7 @@ venv/
 data/bus/
 data/docs/
 data/events/
+data/eval/
 data/interim/
 data/raw/
 data/rules/
