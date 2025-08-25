@@ -63,6 +63,10 @@ def main():
 
     m10cli.register(sub, verifiers)
 
+    from modules.m11 import cli as m11cli
+
+    m11cli.register(sub, verifiers)
+
     args = parser.parse_args()
 
     if args.cmd == "verify":

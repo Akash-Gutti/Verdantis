@@ -1,0 +1,20 @@
+{
+  "issuer": "verdantis",
+  "default_ttl_seconds": 86400,
+  "users": [
+    {"username": "reg_demo", "password": "Reg@123!", "role": "regulator"},
+    {"username": "inv_demo", "password": "Inv@123!", "role": "investor"},
+    {"username": "pub_demo", "password": "Pub@123!", "role": "public"}
+  ],
+  "roles": {
+    "regulator": {
+      "can": ["view_heatmap", "view_open_violations", "request_audit_pack"]
+    },
+    "investor": {
+      "can": ["view_risk_trajectory", "view_esg_roi", "view_news_sentiment"]
+    },
+    "public": {
+      "can": ["view_public_scores"]
+    }
+  }
+}
