@@ -21,6 +21,7 @@ data/event_samples/
 data/index/
 data/logs
 data/processed/
+data/zk/
 .hf/
 outputs/
 models/*

@@ -55,6 +55,10 @@ def main():
 
     m8cli.register(sub, verifiers)
 
+    from modules.m9 import cli as m9cli
+
+    m9cli.register(sub, verifiers)
+
     args = parser.parse_args()
 
     if args.cmd == "verify":
