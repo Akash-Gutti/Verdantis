@@ -34,7 +34,8 @@ ZK_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _now_iso() -> str:
-    return dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    utc_now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
+    return utc_now.isoformat()
 
 
 class FeatureCommitInput(BaseModel):
