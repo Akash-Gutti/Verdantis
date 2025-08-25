@@ -17,6 +17,7 @@ from .m12_1_obs import (
 )
 from .m12_2_ci import run_ci_cli
 from .m12_3_eval import evaluate_causal, evaluate_change, evaluate_rag
+from .m12_4_cards import CardInputs, run_cards_build
 
 
 def _cmd_metrics_export(args: Namespace) -> int:
@@ -133,6 +134,21 @@ def _cmd_eval_all(args: Namespace) -> int:
     return 0
 
 
+def _cmd_cards_build(args: Namespace) -> int:
+    files = run_cards_build(
+        inputs=CardInputs(
+            metrics_prom=Path(args.metrics_prom),
+            rag_report=Path(args.rag_report),
+            causal_report=Path(args.causal_report),
+            change_report=Path(args.change_report),
+            ci_report=Path(args.ci_report) if args.ci_report else None,
+        ),
+        out_dir=Path(args.out_dir),
+    )
+    print(f"M12.4 cards-build → wrote {len(files)} files → {args.out_dir}")
+    return 0
+
+
 def verify_m12() -> Tuple[bool, str]:
     """Lightweight verify: ensure metrics.prom exists,
     is non-empty, and has at least one metric line."""
@@ -225,5 +241,17 @@ def register(subparsers: ArgumentParser, verifiers: Dict[str, Any]) -> None:
     p_ea.add_argument("--dir", default="data/eval")
     p_ea.add_argument("--out-dir", default="data/eval/reports")
     p_ea.set_defaults(func=_cmd_eval_all)
+
+    # -- M12.4 cards commands ---
+    p_cards = sp.add_parser(
+        "cards-build", help="Build model & data cards (Markdown) from artifacts"
+    )
+    p_cards.add_argument("--metrics-prom", default="data/observability/metrics.prom")
+    p_cards.add_argument("--rag-report", default="data/eval/reports/rag_report.json")
+    p_cards.add_argument("--causal-report", default="data/eval/reports/causal_report.json")
+    p_cards.add_argument("--change-report", default="data/eval/reports/change_report.json")
+    p_cards.add_argument("--ci-report", default="data/observability/ci/ci_report.json")
+    p_cards.add_argument("--out-dir", default="docs/cards")
+    p_cards.set_defaults(func=_cmd_cards_build)
 
     verifiers["m12"] = verify_m12
