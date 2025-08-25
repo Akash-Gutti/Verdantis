@@ -92,7 +92,7 @@ def _heuristic_candidates(
             "scope": {"assets": ["*"], "tags": ["energy"]},
             "trigger": {
                 "type": "event",
-                "match": {"event.type": "causal.effect", "metric": "energy_kwh"},
+                "match": {"event.type": "causal.effect", "event.metric": "energy_kwh"},
             },
             "conditions": {
                 "aggregator": "all",

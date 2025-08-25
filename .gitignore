@@ -12,6 +12,7 @@ venv/
 # Data & models
 data/bus/
 data/docs/
+data/events/
 data/interim/
 data/raw/
 data/rules/

@@ -10,7 +10,7 @@ from __future__ import annotations
 from argparse import _SubParsersAction
 from typing import Callable, Dict
 
-from . import m8_1_schema, m8_2_compiler, m8_3_propose
+from . import m8_1_schema, m8_2_compiler, m8_3_propose, m8_4_enforce
 
 
 def register(subparsers: _SubParsersAction, verifiers: Dict[str, Callable[[], None]]) -> None:
@@ -49,6 +49,32 @@ def register(subparsers: _SubParsersAction, verifiers: Dict[str, Callable[[], No
                 print(yml)
 
     p_prop.set_defaults(func=_run_prop)
+
+    p_enf = sp.add_parser(
+        "enforce", help="Evaluate a JSON event (and optional KG) via compiled rules"
+    )
+    p_enf.add_argument("--asset-id", required=True)
+    p_enf.add_argument("--event", required=True, help="Path to event JSON file")
+    p_enf.add_argument("--kg", default=None, help="Path to KG JSON file (optional)")
+    p_enf.add_argument("--rule-id", action="append", dest="rule_ids", default=None)
+    p_enf.add_argument("--only-active", action="store_true")
+
+    def _run_enf(a):
+        import json
+        from pathlib import Path
+
+        ev = json.loads(Path(a.event).read_text(encoding="utf-8"))
+        kg = json.loads(Path(a.kg).read_text(encoding="utf-8")) if a.kg else {}
+        res = m8_4_enforce.enforce_event(
+            asset_id=a.asset_id,
+            event=ev,
+            kg=kg,
+            rule_ids=a.rule_ids,
+            include_proposed=not a.only_active,
+        )
+        print(json.dumps(res, indent=2, ensure_ascii=False))
+
+    p_enf.set_defaults(func=_run_enf)
 
     # Hook verifier
     verifiers["m8"] = m8_1_schema.verify

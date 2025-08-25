@@ -206,7 +206,8 @@ def _sha256_bytes(b: bytes) -> str:
 
 
 def _now_iso() -> str:
-    return dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    utc_now = dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
+    return utc_now.isoformat()
 
 
 def write_schemas() -> None:
@@ -239,7 +240,7 @@ trigger:
   type: event
   match:
     event.type: "causal.effect"
-    metric: "energy_kwh"
+    event.metric: "energy_kwh"
 conditions:
   aggregator: all
   clauses:
