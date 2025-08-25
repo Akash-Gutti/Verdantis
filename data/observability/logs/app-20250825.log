@@ -1,0 +1,4 @@
+{"ts": "2025-08-25T21:42:55.436194+00:00", "level": "info", "service": "demo", "module": "m12.demo", "msg": "hello", "ctx": {"i": 0}}
+{"ts": "2025-08-25T21:42:55.438193+00:00", "level": "info", "service": "demo", "module": "m12.demo", "msg": "hello", "ctx": {"i": 1}}
+{"ts": "2025-08-25T21:42:55.439193+00:00", "level": "info", "service": "demo", "module": "m12.demo", "msg": "hello", "ctx": {"i": 2}}
+{"ts": "2025-08-25T21:43:54.985647+00:00", "level": "info", "service": "portals", "module": "m11.regulator", "msg": "audit_request", "ctx": {"request_id": "req_1756156702", "user": "reg_demo", "role": "regulator", "asset_id": "asset_1", "bundle_id": "ac5b0d07b5da2ab175b20b07de6296d0c1178f02e31971d616b339f1d778b428", "status": "queued"}}
