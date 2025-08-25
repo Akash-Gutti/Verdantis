@@ -15,6 +15,7 @@ from .m12_1_obs import (
     serve_metrics,
     write_prometheus_textfile,
 )
+from .m12_2_ci import run_ci_cli
 
 
 def _cmd_metrics_export(args: Namespace) -> int:
@@ -67,6 +68,20 @@ def _cmd_logs_ingest(args: Namespace) -> int:
 def _cmd_serve_metrics(args: Namespace) -> int:
     serve_metrics(metrics_file=Path(args.file), port=int(args.port))
     return 0
+
+
+def _cmd_ci_run(args: Namespace) -> int:
+    ok, report = run_ci_cli(
+        report_path=Path(args.report),
+        bundle_path=Path(args.bundle),
+    )
+    status = "OK" if ok else "FAILED"
+    print(
+        f"M12.2 ci-run → {status} (lint={report['lint']['ok']}, "
+        f"tests={report['tests']['ok']}, bundle={report['bundle']['ok']}) "
+        f"→ {args.report}, {args.bundle}"
+    )
+    return 0 if ok else 1
 
 
 def verify_m12() -> Tuple[bool, str]:
@@ -132,5 +147,11 @@ def register(subparsers: ArgumentParser, verifiers: Dict[str, Any]) -> None:
     p_srv.add_argument("--file", default="data/observability/metrics.prom")
     p_srv.add_argument("--port", default="9300")
     p_srv.set_defaults(func=_cmd_serve_metrics)
+
+    # CI commands
+    p_ci = sp.add_parser("ci-run", help="Run CI locally: flake8, pytest, bundle, report")
+    p_ci.add_argument("--report", default="data/observability/ci/ci_report.json")
+    p_ci.add_argument("--bundle", default="dist/verdantis_bundle.zip")
+    p_ci.set_defaults(func=_cmd_ci_run)
 
     verifiers["m12"] = verify_m12

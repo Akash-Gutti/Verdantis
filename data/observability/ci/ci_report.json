@@ -1,0 +1,22 @@
+{
+  "lint": {
+    "ok": true,
+    "rc": 0,
+    "seconds": 2.466,
+    "stdout": "",
+    "stderr": ""
+  },
+  "tests": {
+    "ok": true,
+    "rc": 0,
+    "seconds": 0.913,
+    "stdout": "..                                                                       [100%]\n2 passed in 0.13s",
+    "stderr": ""
+  },
+  "bundle": {
+    "ok": true,
+    "path": "dist\\verdantis_bundle.zip",
+    "files": 176
+  },
+  "summary_ok": true
+}
