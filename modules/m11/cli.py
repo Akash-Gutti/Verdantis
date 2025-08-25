@@ -15,6 +15,7 @@ from .m11_1_auth import (
     verify_token,
 )
 from .m11_2_regulator import InputsCfg, run_regulator_build, run_regulator_request_audit
+from .m11_3_investor import InvestorInputs, run_investor_build
 
 
 def _cmd_auth_build(args: Namespace) -> int:
@@ -106,6 +107,38 @@ def _cmd_reg_request_audit(args: Namespace) -> int:
     print(
         f"M11.2 reg-request-audit → queued request_id={req_id} "
         f"(asset_id={args.asset_id}, bundle_id={args.bundle_id}) → {args.out_log}"
+    )
+    return 0
+
+
+def _require_investor(token: str) -> Tuple[bool, str, Dict[str, Any]]:
+    ok, msg, payload = verify_token(token)
+    if not ok:
+        return False, f"auth_failed:{msg}", {}
+    if str(payload.get("role", "")) != "investor":
+        return False, f"forbidden_role:{payload.get('role')}", {}
+    return True, "ok", payload
+
+
+def _cmd_inv_build(args: Namespace) -> int:
+    token = Path(args.token_file).read_text(encoding="utf-8").strip()
+    ok, msg, _ = _require_investor(token)
+    if not ok:
+        print(f"M11.3 inv-build → {msg}")
+        return 1
+
+    inputs = InvestorInputs(
+        deduped_events_path=Path(args.deduped),
+        causal_series_dir=Path(args.causal_series_dir) if args.causal_series_dir else None,
+        news_json_path=Path(args.news) if args.news else None,  # <-- FIXED
+    )
+    out_dir = Path(args.out_dir)
+    metrics = run_investor_build(inputs, out_dir)
+    print(
+        "M11.3 inv-build → "
+        f"assets_with_trajectory={metrics['assets_with_trajectory']}, "
+        f"assets_with_causal={metrics['assets_with_causal']}, "
+        f"news_items={metrics['news_items']} → {out_dir}"
     )
     return 0
 
@@ -206,5 +239,16 @@ def register(subparsers: ArgumentParser, verifiers: Dict[str, Any]) -> None:
         help="Append-only request log JSON",
     )
     p_req.set_defaults(func=_cmd_reg_request_audit)
+
+    # Investor portal subcommands (M11.3)
+    p_inv = sp.add_parser(
+        "inv-build", help="Build investor portal data (risk trajectory, ESG→ROI, news)"
+    )
+    p_inv.add_argument("--token-file", required=True, help="JWT from m11 auth-login (investor)")
+    p_inv.add_argument("--deduped", default="data/processed/m10/filtered_events_deduped.json")
+    p_inv.add_argument("--causal-series-dir", default="data/processed/causal/api/series")
+    p_inv.add_argument("--news", default="data/processed/news/news.json")
+    p_inv.add_argument("--out-dir", default="data/processed/m11/portals/investor")
+    p_inv.set_defaults(func=_cmd_inv_build)
 
     verifiers["m11"] = verify_m11
