@@ -1,0 +1,18 @@
+{
+  "policy": {
+    "min_severity": "medium",
+    "max_items": 200,
+    "visible_fields": ["ts", "topic", "severity", "aoi_id", "region"],
+    "anonymize_asset_id": true,
+    "include_asset_id_field": false,
+    "asset_pseudonym_prefix": "asset_",
+    "coords_round_decimals": 0
+  },
+  "regionalization": {
+    "aoi_to_region": {
+      "aoi_1": "Region A",
+      "aoi_2": "Region B"
+    },
+    "fallback_region": "Unknown"
+  }
+}

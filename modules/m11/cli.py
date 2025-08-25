@@ -16,6 +16,7 @@ from .m11_1_auth import (
 )
 from .m11_2_regulator import InputsCfg, run_regulator_build, run_regulator_request_audit
 from .m11_3_investor import InvestorInputs, run_investor_build
+from .m11_4_public import run_public_build
 
 
 def _cmd_auth_build(args: Namespace) -> int:
@@ -143,6 +144,30 @@ def _cmd_inv_build(args: Namespace) -> int:
     return 0
 
 
+def _require_public(token: str) -> Tuple[bool, str, Dict[str, Any]]:
+    ok, msg, payload = verify_token(token)
+    if not ok:
+        return False, f"auth_failed:{msg}", {}
+    if str(payload.get("role", "")) != "public":
+        return False, f"forbidden_role:{payload.get('role')}", {}
+    return True, "ok", payload
+
+
+def _cmd_pub_build(args: Namespace) -> int:
+    token = Path(args.token_file).read_text(encoding="utf-8").strip()
+    ok, msg, _ = _require_public(token)
+    if not ok:
+        print(f"M11.4 pub-build → {msg}")
+        return 1
+    feed_n, regions_n = run_public_build(
+        deduped_path=Path(args.deduped),
+        cfg_path=Path(args.config),
+        out_dir=Path(args.out_dir),
+    )
+    print(f"M11.4 pub-build → items={feed_n}, regions={regions_n} → {args.out_dir}")
+    return 0
+
+
 def verify_m11() -> Tuple[bool, str]:
     """Lightweight verify: ensure user store exists and is well-formed."""
     store_path = Path("data/processed/m11/auth/users_store.json")
@@ -250,5 +275,13 @@ def register(subparsers: ArgumentParser, verifiers: Dict[str, Any]) -> None:
     p_inv.add_argument("--news", default="data/processed/news/news.json")
     p_inv.add_argument("--out-dir", default="data/processed/m11/portals/investor")
     p_inv.set_defaults(func=_cmd_inv_build)
+
+    # Public portal subcommands (M11.4)
+    p_pub = sp.add_parser("pub-build", help="Build public portal data (masked feed + scores)")
+    p_pub.add_argument("--token-file", required=True, help="JWT from m11 auth-login (public)")
+    p_pub.add_argument("--deduped", default="data/processed/m10/filtered_events_deduped.json")
+    p_pub.add_argument("--config", default="configs/m11_public.json")
+    p_pub.add_argument("--out-dir", default="data/processed/m11/portals/public")
+    p_pub.set_defaults(func=_cmd_pub_build)
 
     verifiers["m11"] = verify_m11
