@@ -1,0 +1,12 @@
+{
+  "ttl_seconds": 3600,
+  "min_interval_seconds": 300,
+  "key_fields": ["subscription_id", "event.topic", "event.asset_id", "event.rule_type"],
+  "flap": {
+    "enabled": true,
+    "key_fields": ["subscription_id", "event.asset_id", "event.rule_type"],
+    "value_field": "event.severity",
+    "window_seconds": 1800,
+    "max_changes": 3
+  }
+}
