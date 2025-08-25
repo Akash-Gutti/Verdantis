@@ -1,0 +1,25 @@
+{
+  "subscriptions": [
+    {
+      "id": "policy_high_plus",
+      "topics": ["policy.enforcement"],
+      "severity_at_least": "high",
+      "assets": ["*"],
+      "rule_types": ["emissions_exceedance", "water_breach", "waste_violation"],
+      "suppress_if": {"acknowledged": true}
+    },
+    {
+      "id": "sat_ndvi_drop",
+      "topics": ["sat.change"],
+      "severity_at_least": "medium",
+      "aoi_ids": ["aoi_1", "aoi_2"],
+      "min_delta": {"ndvi": 0.2}
+    },
+    {
+      "id": "zk_attest_issues",
+      "topics": ["zk.issue", "zk.verify"],
+      "severity_at_least": "low",
+      "assets": ["*"]
+    }
+  ]
+}
