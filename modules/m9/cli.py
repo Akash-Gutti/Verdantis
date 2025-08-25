@@ -9,6 +9,7 @@ from typing import Callable, Dict
 
 from . import m9_1_commit
 from .m9_2_issue_verify import IssueRequest, VerifyRequest, issue_bundle, verify_bundle
+from .m9_3_index import list_index, read_bundle_file, rebuild_index
 
 
 def register(subparsers: _SubParsersAction, verifiers: Dict[str, Callable[[], None]]) -> None:
@@ -76,6 +77,42 @@ def register(subparsers: _SubParsersAction, verifiers: Dict[str, Callable[[], No
         )
 
     p_verify.set_defaults(func=_run_verify)
+
+    # m9 index-rebuild
+    p_idx = sp.add_parser("index-rebuild", help="Rebuild bundles index from disk")
+
+    def _run_idx(_a):
+        scanned, indexed = rebuild_index()
+        print(json.dumps({"scanned": scanned, "indexed": indexed}, ensure_ascii=False))
+
+    p_idx.set_defaults(func=_run_idx)
+
+    # m9 list
+    p_list = sp.add_parser("list", help="List bundles (filterable)")
+    p_list.add_argument("--model-id", default=None)
+    p_list.add_argument("--decision", default=None, choices=[None, "pass", "fail"], nargs="?")
+    p_list.add_argument("--q", default=None, help="Substring match in id/hash prefixes")
+    p_list.add_argument("--limit", type=int, default=20)
+    p_list.add_argument("--offset", type=int, default=0)
+
+    def _run_list(a):
+        total, recs = list_index(
+            model_id=a.model_id, decision=a.decision, q=a.q, limit=a.limit, offset=a.offset
+        )
+        print(json.dumps({"total": total, "items": recs}, ensure_ascii=False))
+
+    p_list.set_defaults(func=_run_list)
+
+    # m9 show
+    p_show = sp.add_parser("show", help="Show full bundle JSON by id")
+    p_show.add_argument("--bundle-id", required=True)
+
+    def _run_show(a):
+        obj = read_bundle_file(a.bundle_id)
+        # pretty print but avoid non-UTF8
+        print(json.dumps(obj, indent=2, ensure_ascii=False))
+
+    p_show.set_defaults(func=_run_show)
 
     # Verifier hook (no checks yet for M9.1)
     verifiers["m9"] = m9_1_commit.verify

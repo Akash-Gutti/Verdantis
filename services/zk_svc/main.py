@@ -2,9 +2,15 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 
 from modules.m9.m9_2_issue_verify import IssueRequest, VerifyRequest, issue_bundle, verify_bundle
+from modules.m9.m9_3_index import (
+    ensure_index_exists,
+    list_index,
+    read_bundle_file,
+    upsert_index_record,
+)
 from services.common.config import settings
 
 app = FastAPI(title="zk-svc", version="0.2.0")
@@ -25,6 +31,7 @@ def issue(req: IssueRequest) -> Dict[str, Any]:
     try:
         secret = getattr(settings, "zk_secret", None)
         bundle = issue_bundle(req, secret=secret)
+        upsert_index_record(bundle)  # <-- add this line
         return {"ok": True, "bundle": bundle.model_dump()}
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -46,5 +53,40 @@ def verify(req: VerifyRequest) -> Dict[str, Any]:
             "reasons": res.reasons,
             "bundle_id": res.bundle_id,
         }
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/bundles")
+def list_bundles(
+    model_id: str | None = Query(default=None),
+    decision: str | None = Query(default=None, pattern="^(pass|fail)$"),
+    q: str | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> Dict[str, Any]:
+    """
+    List indexed bundles with optional filters.
+    """
+    try:
+        ensure_index_exists()
+        total, items = list_index(
+            model_id=model_id, decision=decision, q=q, limit=limit, offset=offset
+        )
+        return {"ok": True, "total": total, "items": items}
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/bundle/{bundle_id}")
+def get_bundle(bundle_id: str) -> Dict[str, Any]:
+    """
+    Fetch full bundle JSON by id.
+    """
+    try:
+        obj = read_bundle_file(bundle_id)
+        return {"ok": True, "bundle": obj}
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=400, detail=str(exc)) from exc
