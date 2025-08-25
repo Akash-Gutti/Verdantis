@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import streamlit as st
@@ -15,6 +17,10 @@ from modules.m5.m5_2_data import (
     fetch_assets_geojson,
     fetch_overlays_geojson,
 )
+
+feed_path = Path("data/processed/m10/ui/alerts_feed.json")
+if feed_path.exists():
+    items = json.loads(feed_path.read_text(encoding="utf-8"))
 
 
 # --- helpers ---------------------------------------------------------------

@@ -9,6 +9,7 @@ from typing import Any, Dict, Tuple
 from .m10_1_filters import run_filters_cli
 from .m10_2_channels import run_channels_cli
 from .m10_3_dedupe import run_dedupe_cli
+from .m10_4_feed import run_feed_cli
 
 
 def _cmd_filters(args: Namespace) -> int:
@@ -47,6 +48,17 @@ def _cmd_dedupe(args: Namespace) -> int:
         f"M10.3 dedupe → kept={kept}, suppressed={suppressed} "
         f"→ {args.out}, {args.metrics} (state: {args.state})"
     )
+    return 0
+
+
+def _cmd_feed(args: Namespace) -> int:  # NEW
+    kept = run_feed_cli(
+        deduped_path=Path(args.deduped),
+        out_path=Path(args.out),
+        metrics_path=Path(args.metrics),
+        limit=int(args.limit),
+    )
+    print(f"M10.4 feed → items={kept} → {args.out}, {args.metrics}")
     return 0
 
 
@@ -152,6 +164,30 @@ def register(subparsers: ArgumentParser, verifiers: Dict[str, Any]) -> None:
         help="Persistent state JSON",
     )
     p_dedupe.set_defaults(func=_cmd_dedupe)
+
+    # NEW: feed subcommand (M10.4)
+    p_feed = sp.add_parser("feed", help="Run M10.4 to build UI alerts feed from deduped events")
+    p_feed.add_argument(
+        "--deduped",
+        default="data/processed/m10/filtered_events_deduped.json",
+        help="Input: deduped matched events (M10.3 output)",
+    )
+    p_feed.add_argument(
+        "--out",
+        default="data/processed/m10/ui/alerts_feed.json",
+        help="Output: alerts feed JSON for the UI",
+    )
+    p_feed.add_argument(
+        "--metrics",
+        default="data/processed/m10/ui/alerts_feed_metrics.json",
+        help="Output: metrics JSON",
+    )
+    p_feed.add_argument(
+        "--limit",
+        default="100",
+        help="Maximum number of items to include (newest first)",
+    )
+    p_feed.set_defaults(func=_cmd_feed)
 
     # attach verifier for `scripts/verdctl.py verify -m m10`
     verifiers["m10"] = verify_m10
