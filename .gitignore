@@ -14,6 +14,7 @@ data/bus/
 data/docs/
 data/interim/
 data/raw/
+data/rules/
 data/archived_scripts/
 data/event_samples/
 data/index/

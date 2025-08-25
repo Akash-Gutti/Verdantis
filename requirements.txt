@@ -34,6 +34,15 @@ psycopg[binary]
 networkx
 lxml
 jsonschema
+matplotlib>=3.8
+statsmodels>=0.14
+dowhy>=0.12
+econml>=0.15
+shapely>=2.0
+geopandas>=0.14
+streamlit>=1.35
+folium>=0.16
+streamlit-folium>=0.18
 
 # tooling
 black>=24.4
