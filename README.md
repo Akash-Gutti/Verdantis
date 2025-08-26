@@ -1,4 +1,4 @@
-# Verdantis v3R — ESG & Risk Digital Twin
+# Verdantis — ESG & Risk Digital Twin
 
 Verdantis is a pragmatic, end-to-end reference implementation for real-time ESG/risk monitoring. It ingests material events, filters and deduplicates them, routes alerts to channels, and exposes role-based portals (Regulator, Investor, Public). It ships with first-class observability and a lightweight evaluation harness so you can trust what it’s doing and why.
 
