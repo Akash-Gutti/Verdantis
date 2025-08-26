@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-08-25T22:30:55.872331+00:00",
+  "generated_at": "2025-08-26T09:28:45.376614+00:00",
   "files": [
     "docs\\cards\\model_card_alerts.md",
     "docs\\cards\\data_card_eval_sets.md"
@@ -12,7 +12,7 @@
     "ci_report": "data\\observability\\ci\\ci_report.json"
   },
   "git": {
-    "commit": "a85e69c",
+    "commit": "cad74c5",
     "branch": "main"
   }
 }

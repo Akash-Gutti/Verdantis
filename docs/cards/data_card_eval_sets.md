@@ -1,6 +1,6 @@
 # Verdantis — Data Card (Evaluation Sets)
 
-_Generated: 2025-08-25T22:30:55.871302+00:00Z_
+_Generated: 2025-08-26T09:28:45.376614+00:00Z_
 
 ## Datasets
 - RAG eval: `data/eval/reports/rag_report.json`

@@ -101,6 +101,14 @@ def _cmd_bind_docs(args: argparse.Namespace) -> None:
     print("✅ Bound docs from " f"{schema}.{table} → vw_doc_index_norm and built M5.1 views.")
 
 
+def _cmd_repair(_: argparse.Namespace) -> None:
+    from .m5_1_views import create_views as create_m51_views
+
+    create_m51_views()
+    create_m53_views()
+    print("🛠  M5 repair done: M5.1 + M5.3 views rebuilt.")
+
+
 def register(
     subparsers: argparse._SubParsersAction,
     verifiers: Dict[str, Callable[[], None]],
@@ -168,3 +176,6 @@ def register(
             lambda c, e, b: print(f"M5.3 verify → citations={c}, edges={e}, bundles={b}")
         )(*verify_m53())
     )
+
+    p_fix = m5_sub.add_parser("repair", help="Rebuild all M5 views (M5.1 + M5.3)")
+    p_fix.set_defaults(func=_cmd_repair)

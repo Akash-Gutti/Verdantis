@@ -20,13 +20,16 @@ data/rules/
 data/archived_scripts/
 data/event_samples/
 data/index/
-data/logs
+data/logs/
+data/observability/
 data/processed/
 data/zk/
 .hf/
+.hf_cache/
 outputs/
 models/*
 !models/.gitkeep
+backup_all.sql
 
 # OS/IDE
 .DS_Store

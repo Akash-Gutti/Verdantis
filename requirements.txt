@@ -44,6 +44,8 @@ geopandas>=0.14
 streamlit>=1.35
 folium>=0.16
 streamlit-folium>=0.18
+faiss-cpu
+hnswlib
 
 # tooling
 black>=24.4
